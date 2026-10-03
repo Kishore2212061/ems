@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { env } from '../config/env';
+import type { OtpPurpose } from '../auth/schemas/otp-code.schema';
 import { otpEmail } from './templates';
 
 export interface MailMessage {
@@ -71,7 +72,7 @@ export class MailService implements OnModuleInit {
     void run();
   }
 
-  sendOtp(to: string, name: string, code: string, ttlMinutes: number) {
-    this.dispatch({ to, ...otpEmail({ name, code, ttlMinutes }) });
+  sendOtp(to: string, name: string, code: string, ttlMinutes: number, purpose: OtpPurpose) {
+    this.dispatch({ to, ...otpEmail({ name, code, ttlMinutes, purpose }) });
   }
 }

@@ -26,6 +26,12 @@ export const authApi = {
 
   resendOtp: (otpToken: string) => api.post<{ sent: true; resendAfterSec: number }>('/auth/resend-otp', { otpToken }),
 
+  forgotPassword: (email: string) => api.post<OtpChallenge>('/auth/forgot-password', { email }),
+
+  resetPassword: async (otpToken: string, code: string, password: string) => {
+    applySession(await api.post<SessionPayload>('/auth/reset-password', { otpToken, code, password }));
+  },
+
   logout: async () => {
     try {
       await api.post('/auth/logout');

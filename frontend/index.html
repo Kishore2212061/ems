@@ -3,12 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#4f46e5" />
+    <meta name="theme-color" content="#1c2128" />
+    <script>
+      // Theme before first paint (no flash). Medium-dark is the default.
+      document.documentElement.classList.toggle('dark', localStorage.getItem('theme') !== 'light');
+    </script>
     <meta name="description" content="NEC Events — registrations, tickets and check-in for National Engineering College fests." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>NEC Events</title>
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased">
+  <body class="bg-page text-fg antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

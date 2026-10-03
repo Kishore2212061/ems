@@ -2,6 +2,7 @@
 
 Monorepo: `backend/` (NestJS 11 + Fastify + MongoDB) and `frontend/` (React 19 + Vite + Tailwind v4).
 Full system design: [docs/ems-system-documentation.md](docs/ems-system-documentation.md).
+Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 ## Module status
 

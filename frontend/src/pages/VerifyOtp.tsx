@@ -1,24 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Redirect, useLocation, useSearch } from 'wouter';
 import { AuthLayout } from '@/components/AuthLayout';
+import { ArrowLeftIcon } from '@/components/icons';
 import { OtpInput } from '@/components/OtpInput';
+import { ResendLink } from '@/components/ResendLink';
 import { Alert, Button } from '@/components/ui';
 import { ApiError } from '@/lib/api';
 import { authApi } from '@/lib/auth-api';
+import { otpErrorMessage } from '@/lib/otp-error';
+import { useCountdown } from '@/lib/use-countdown';
 import { useSubmit } from '@/lib/use-submit';
 import { useAuth } from '@/store/auth';
 
 const LENGTH = 6;
-
-function useCountdown(initial: number) {
-  const [left, setLeft] = useState(initial);
-  useEffect(() => {
-    if (left <= 0) return;
-    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [left]);
-  return [left, setLeft] as const;
-}
 
 export default function VerifyOtp() {
   const [, navigate] = useLocation();
@@ -42,12 +36,8 @@ export default function VerifyOtp() {
         return true;
       } catch (e) {
         setCode('');
-        if (e instanceof ApiError && e.code === 'OTP_INVALID' && e.details?.attemptsLeft != null) {
-          const n = e.details.attemptsLeft;
-          throw new ApiError(e.status, e.code, `Incorrect code. ${n} attempt${n === 1 ? '' : 's'} left.`);
-        }
         if (e instanceof ApiError && e.code === 'OTP_SESSION_EXPIRED') setChallenge(null);
-        throw e;
+        throw otpErrorMessage(e);
       }
     });
     if (ok) navigate(next, { replace: true });
@@ -75,7 +65,7 @@ export default function VerifyOtp() {
       title="Check your email"
       subtitle={
         <>
-          We sent a {LENGTH}-digit code to <span className="font-medium text-slate-900">{challenge.email}</span>
+          Enter the <span className="whitespace-nowrap">{LENGTH}-digit</span> code we sent to <span className="font-semibold text-fg [overflow-wrap:anywhere]">{challenge.email}</span>
         </>
       }
     >
@@ -103,32 +93,20 @@ export default function VerifyOtp() {
         <Button type="submit" loading={verify.loading} disabled={code.length !== LENGTH}>
           Verify and continue
         </Button>
+        <ResendLink left={left} loading={resend.loading} onResend={onResend} />
       </form>
 
-      <div className="mt-8 flex items-center justify-between text-sm">
-        <button
-          type="button"
-          onClick={() => {
-            setChallenge(null);
-            navigate('/login', { replace: true });
-          }}
-          className="text-slate-500 hover:text-slate-800"
-        >
-          ← Use another account
-        </button>
-        {left > 0 ? (
-          <span className="tabular-nums text-slate-400">Resend in {left}s</span>
-        ) : (
-          <button
-            type="button"
-            onClick={onResend}
-            disabled={resend.loading}
-            className="font-semibold text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
-          >
-            {resend.loading ? 'Sending…' : 'Resend code'}
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          setChallenge(null);
+          navigate('/login', { replace: true });
+        }}
+        className="mx-auto mt-8 flex items-center gap-1.5 text-sm font-medium text-muted hover:text-fg"
+      >
+        <ArrowLeftIcon className="size-4" />
+        Back to sign in
+      </button>
     </AuthLayout>
   );
 }

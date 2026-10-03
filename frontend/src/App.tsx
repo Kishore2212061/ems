@@ -8,6 +8,7 @@ import { useAuth } from '@/store/auth';
 const Login = lazy(() => import('@/pages/Login'));
 const Signup = lazy(() => import('@/pages/Signup'));
 const VerifyOtp = lazy(() => import('@/pages/VerifyOtp'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -34,7 +35,7 @@ function NotFound() {
       <div>
         <p className="text-sm font-semibold text-indigo-600">404</p>
         <h1 className="mt-2 text-2xl font-semibold">Page not found</h1>
-        <Link href="/" className="mt-6 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+        <Link href="/" className="mt-6 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
           ← Back home
         </Link>
       </div>
@@ -69,6 +70,11 @@ export default function App() {
         <Route path="/verify-otp">
           <GuestOnly>
             <VerifyOtp />
+          </GuestOnly>
+        </Route>
+        <Route path="/forgot-password">
+          <GuestOnly>
+            <ForgotPassword />
           </GuestOnly>
         </Route>
         <Route path="/dashboard">

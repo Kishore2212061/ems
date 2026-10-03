@@ -16,6 +16,12 @@ export class HealthController {
   check(@Res({ passthrough: true }) reply: FastifyReply) {
     const db = this.conn.readyState === 1 ? 'up' : 'down';
     if (db === 'down') reply.status(HttpStatus.SERVICE_UNAVAILABLE);
-    return { status: db === 'up' ? 'ok' : 'degraded', db, uptime: Math.round(process.uptime()) };
+    return {
+      status: db === 'up' ? 'ok' : 'degraded',
+      db,
+      uptime: Math.round(process.uptime()),
+      // Railway injects the deployed commit; handy to confirm which build is live.
+      version: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local',
+    };
   }
 }

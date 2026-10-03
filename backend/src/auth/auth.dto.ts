@@ -40,5 +40,15 @@ export const VerifyOtpDto = z.object({
 });
 export type VerifyOtpDto = z.infer<typeof VerifyOtpDto>;
 
+export const ForgotPasswordDto = z.object({ email });
+export type ForgotPasswordDto = z.infer<typeof ForgotPasswordDto>;
+
+export const ResetPasswordDto = z.object({
+  otpToken: z.string().min(1).max(1000),
+  code: VerifyOtpDto.shape.code,
+  password,
+});
+export type ResetPasswordDto = z.infer<typeof ResetPasswordDto>;
+
 export const ResendOtpDto = z.object({ otpToken: z.string().min(1).max(1000) });
 export type ResendOtpDto = z.infer<typeof ResendOtpDto>;

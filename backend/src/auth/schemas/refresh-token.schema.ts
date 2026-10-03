@@ -10,7 +10,7 @@ export interface RefreshToken {
   sv: number;
   expires_at: Date;
   revoked_at: Date | null;
-  revoke_reason: 'ROTATED' | 'LOGOUT' | 'REUSE_DETECTED' | null;
+  revoke_reason: 'ROTATED' | 'LOGOUT' | 'REUSE_DETECTED' | 'PASSWORD_RESET' | null;
   ip?: string;
   user_agent?: string;
   created_at: Date;

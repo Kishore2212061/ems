@@ -3,7 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { AuthUser, CurrentUser, Public } from '../common/decorators';
 import { ZodPipe } from '../common/zod.pipe';
-import { LoginDto, ResendOtpDto, SignupDto, VerifyOtpDto } from './auth.dto';
+import { ForgotPasswordDto, LoginDto, ResendOtpDto, ResetPasswordDto, SignupDto, VerifyOtpDto } from './auth.dto';
 import { AuthService, SessionResult } from './auth.service';
 import { ClientCtx, REFRESH_COOKIE, TokenService } from './token.service';
 
@@ -65,6 +65,26 @@ export class AuthController {
   @HttpCode(200)
   resendOtp(@Body(new ZodPipe(ResendOtpDto)) dto: ResendOtpDto) {
     return this.auth.resendOtp(dto.otpToken);
+  }
+
+  @Public()
+  @Throttle(AUTH_LIMIT)
+  @Post('forgot-password')
+  @HttpCode(200)
+  forgotPassword(@Body(new ZodPipe(ForgotPasswordDto)) dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Throttle(AUTH_LIMIT)
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(
+    @Body(new ZodPipe(ResetPasswordDto)) dto: ResetPasswordDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.withSession(reply, await this.auth.resetPassword(dto, ctxOf(req)));
   }
 
   @Public()

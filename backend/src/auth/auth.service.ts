@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 import { Errors } from '../common/app-exception';
 import { env } from '../config/env';
 import { PUBLIC_USER_FIELDS, PublicUserDoc, toPublicUser, User, USER_MODEL } from '../users/user.schema';
-import { LoginDto, SignupDto, VerifyOtpDto } from './auth.dto';
+import { LoginDto, ResetPasswordDto, SignupDto, VerifyOtpDto } from './auth.dto';
 import { OtpService } from './otp.service';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './password';
 import { REFRESH_TOKEN_MODEL, RefreshToken } from './schemas/refresh-token.schema';
@@ -12,6 +12,12 @@ import { ClientCtx, TokenService } from './token.service';
 
 /** If two tabs refresh simultaneously, the loser presents an already-rotated token within this window. */
 const ROTATION_GRACE_MS = 30_000;
+
+/**
+ * Revoked tokens are kept only long enough to catch replay of a stolen token, then the TTL index
+ * deletes them — instead of every rotation leaving a row behind for the full 30-day refresh TTL.
+ */
+const purgeAt = () => new Date(Date.now() + env.REFRESH_REVOKED_RETENTION * 1000);
 
 export interface SessionResult {
   accessToken: string;
@@ -131,7 +137,7 @@ export class AuthService {
 
   async verifyOtp(dto: VerifyOtpDto, ctx: ClientCtx): Promise<SessionResult> {
     const t = this.tokens.verifyOtpToken(dto.otpToken);
-    if (!t) throw Errors.otpSession();
+    if (!t || t.purpose !== 'FIRST_LOGIN') throw Errors.otpSession();
 
     await this.otp.consume(t.userId, t.purpose, dto.code);
 
@@ -160,10 +166,69 @@ export class AuthService {
   async resendOtp(otpToken: string) {
     const t = this.tokens.verifyOtpToken(otpToken);
     if (!t) throw Errors.otpSession();
-    const user = await this.users.findById(t.userId).select('email full_name first_login_otp_done').lean();
-    if (!user || user.first_login_otp_done) throw Errors.otpSession();
+    const user = await this.users.findById(t.userId).select('email full_name first_login_otp_done status').lean();
+    if (t.purpose === 'FIRST_LOGIN' && (!user || user.first_login_otp_done)) throw Errors.otpSession();
+    // Reset flow for an unknown email: pretend success so the endpoint doesn't reveal who has an account.
+    if (!user || user.status === 'SUSPENDED') return { sent: true, resendAfterSec: env.OTP_RESEND_COOLDOWN_SECONDS };
     const resendAfterSec = await this.otp.issue(user, t.purpose, true);
     return { sent: true, resendAfterSec };
+  }
+
+  // ── Password reset ────────────────────────────────────────────────────────
+  /** Same response whether or not the email exists (no account enumeration). */
+  async forgotPassword(email: string): Promise<OtpRequiredResult> {
+    const user = await this.users.findOne({ email }).select('email full_name status').lean();
+    if (!user || user.status === 'SUSPENDED') {
+      return {
+        otpRequired: true,
+        otpToken: this.tokens.signOtpToken(new Types.ObjectId(), 'PASSWORD_RESET'),
+        email,
+        resendAfterSec: env.OTP_RESEND_COOLDOWN_SECONDS,
+      };
+    }
+    const resendAfterSec = await this.otp.issue(user, 'PASSWORD_RESET', false);
+    return {
+      otpRequired: true,
+      otpToken: this.tokens.signOtpToken(user._id, 'PASSWORD_RESET'),
+      email: user.email,
+      resendAfterSec,
+    };
+  }
+
+  /** Code proves email ownership → set new password, sign out every other device, sign in here. */
+  async resetPassword(dto: ResetPasswordDto, ctx: ClientCtx): Promise<SessionResult> {
+    const t = this.tokens.verifyOtpToken(dto.otpToken);
+    if (!t || t.purpose !== 'PASSWORD_RESET') throw Errors.otpSession();
+
+    await this.otp.consume(t.userId, 'PASSWORD_RESET', dto.code);
+
+    const now = new Date();
+    const user = await this.users
+      .findOneAndUpdate(
+        { _id: t.userId, status: { $ne: 'SUSPENDED' } },
+        {
+          $set: {
+            password_hash: await hashPassword(dto.password),
+            // Reset code also proves email ownership, so it completes first-time verification too.
+            first_login_otp_done: true,
+            status: 'ACTIVE',
+            email_verified_at: now,
+            last_login_at: now,
+            failed_login_count: 0,
+            locked_until: null,
+          },
+          $inc: { session_version: 1 }, // invalidates every existing session
+        },
+        { new: true, projection: PUBLIC_USER_FIELDS },
+      )
+      .lean();
+    if (!user) throw Errors.accountSuspended();
+
+    await this.refreshTokens.updateMany(
+      { user_id: user._id, revoked_at: null },
+      { $set: { revoked_at: now, revoke_reason: 'PASSWORD_RESET', expires_at: purgeAt() } },
+    );
+    return this.startSession(user, ctx);
   }
 
   // ── Sessions ──────────────────────────────────────────────────────────────
@@ -180,49 +245,56 @@ export class AuthService {
     };
   }
 
-  /** Rotate refresh token. Returns user too, so the SPA restores a session in one round trip. */
+  /**
+   * Issue a fresh access token from the refresh cookie. Returns user too, so the SPA restores a
+   * session in one round trip.
+   *
+   * The refresh token itself is rotated at most once per REFRESH_ROTATE_AFTER. Page reloads and
+   * the 14-min background refresh inside that window are a single indexed read + user read —
+   * no write, no new row. Trade-off: replay of a stolen cookie within the window isn't detected.
+   */
   async refresh(raw: string | undefined, ctx: ClientCtx): Promise<SessionResult> {
     if (!raw) throw Errors.unauthorized('NO_SESSION');
-    const tokenHash = this.tokens.hashRefresh(raw);
     const now = new Date();
 
-    // Atomic claim: exactly one request can rotate a given token.
-    const claimed = await this.refreshTokens
-      .findOneAndUpdate(
-        { token_hash: tokenHash, revoked_at: null, expires_at: { $gt: now } },
-        { $set: { revoked_at: now, revoke_reason: 'ROTATED' } },
-        { projection: 'user_id family_id sv' },
-      )
+    const token = await this.refreshTokens
+      .findOne({ token_hash: this.tokens.hashRefresh(raw) })
+      .select('user_id family_id sv revoked_at revoke_reason expires_at created_at')
       .lean();
+    if (!token || token.expires_at <= now) {
+      throw Errors.unauthorized('SESSION_EXPIRED', 'Your session has expired. Please log in again.');
+    }
 
-    if (!claimed) {
-      const prev = await this.refreshTokens
-        .findOne({ token_hash: tokenHash })
-        .select('user_id family_id sv revoked_at revoke_reason')
-        .lean();
-      if (!prev) throw Errors.unauthorized('SESSION_EXPIRED', 'Your session has expired. Please log in again.');
-
-      const benignRace =
-        prev.revoke_reason === 'ROTATED' && prev.revoked_at && now.getTime() - prev.revoked_at.getTime() < ROTATION_GRACE_MS;
-      if (benignRace) {
+    if (token.revoked_at) {
+      if (token.revoke_reason === 'ROTATED' && now.getTime() - token.revoked_at.getTime() < ROTATION_GRACE_MS) {
         // Another tab just rotated this token. Hand out an access token but no new cookie —
         // the browser already holds the winner's cookie.
-        const user = await this.loadSessionUser(prev.user_id, prev.sv);
-        return this.accessFor(user);
+        return this.accessFor(await this.loadSessionUser(token.user_id, token.sv));
       }
-
-      if (prev.revoke_reason === 'ROTATED') {
+      if (token.revoke_reason === 'ROTATED') {
         // A rotated token came back after the grace window → likely stolen. Kill the whole family.
         await this.refreshTokens.updateMany(
-          { family_id: prev.family_id, revoked_at: null },
-          { $set: { revoked_at: now, revoke_reason: 'REUSE_DETECTED' } },
+          { family_id: token.family_id, revoked_at: null },
+          { $set: { revoked_at: now, revoke_reason: 'REUSE_DETECTED', expires_at: purgeAt() } },
         );
       }
       throw Errors.unauthorized('SESSION_REVOKED', 'Your session has ended. Please log in again.');
     }
 
-    const user = await this.loadSessionUser(claimed.user_id, claimed.sv);
-    return this.startSession(user, ctx, claimed.family_id);
+    const user = await this.loadSessionUser(token.user_id, token.sv);
+
+    // Still young → keep the same refresh token (no cookie change).
+    if (now.getTime() - token.created_at.getTime() < env.REFRESH_ROTATE_AFTER * 1000) {
+      return this.accessFor(user);
+    }
+
+    // Old enough → rotate. Conditional update so only one concurrent request wins.
+    const claimed = await this.refreshTokens.updateOne(
+      { _id: token._id, revoked_at: null },
+      { $set: { revoked_at: now, revoke_reason: 'ROTATED', expires_at: purgeAt() } },
+    );
+    if (claimed.modifiedCount !== 1) return this.accessFor(user); // lost the race to another tab
+    return this.startSession(user, ctx, token.family_id);
   }
 
   private async loadSessionUser(userId: Types.ObjectId, sv: number) {
@@ -239,7 +311,7 @@ export class AuthService {
     if (t) {
       await this.refreshTokens.updateMany(
         { family_id: t.family_id, revoked_at: null },
-        { $set: { revoked_at: new Date(), revoke_reason: 'LOGOUT' } },
+        { $set: { revoked_at: new Date(), revoke_reason: 'LOGOUT', expires_at: purgeAt() } },
       );
     }
   }

@@ -16,16 +16,22 @@ ${body}
 </table></td></tr></table></body></html>`;
 }
 
-export function otpEmail(p: { name: string; code: string; ttlMinutes: number }) {
+const OTP_COPY = {
+  FIRST_LOGIN: { title: 'Verify your email', intro: 'use this code to finish signing in', subject: 'is your verification code' },
+  PASSWORD_RESET: { title: 'Reset your password', intro: 'use this code to reset your password', subject: 'is your password reset code' },
+};
+
+export function otpEmail(p: { name: string; code: string; ttlMinutes: number; purpose: keyof typeof OTP_COPY }) {
+  const copy = OTP_COPY[p.purpose];
   const html = layout(
-    'Verify your email',
-    `<p style="margin:0 0 20px;line-height:1.5;color:#374151">Hi ${esc(p.name)}, use this code to finish signing in:</p>
+    copy.title,
+    `<p style="margin:0 0 20px;line-height:1.5;color:#374151">Hi ${esc(p.name)}, ${copy.intro}:</p>
 <div style="font-size:32px;font-weight:700;letter-spacing:8px;background:#f5f3ff;color:#4338ca;border-radius:8px;padding:16px;text-align:center">${p.code}</div>
 <p style="margin:20px 0 0;font-size:13px;color:#6b7280;line-height:1.5">The code expires in ${p.ttlMinutes} minutes. If you didn't request it, you can ignore this email.</p>`,
   );
   return {
-    subject: `${p.code} is your verification code`,
+    subject: `${p.code} ${copy.subject}`,
     html,
-    text: `Hi ${p.name},\n\nYour verification code is ${p.code}. It expires in ${p.ttlMinutes} minutes.\n\nIf you didn't request it, ignore this email.`,
+    text: `Hi ${p.name}, ${copy.intro}: ${p.code}\n\nIt expires in ${p.ttlMinutes} minutes.\n\nIf you didn't request it, ignore this email.`,
   };
 }

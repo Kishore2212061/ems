@@ -1,18 +1,30 @@
-import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { useId, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SVGProps } from 'react';
+import { passwordScore } from '@/lib/validate';
+import { AlertIcon, CheckIcon, EyeIcon, EyeOffIcon } from './icons';
 
-const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
+export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
-export function Logo({ light = false }: { light?: boolean }) {
+type Icon = ComponentType<SVGProps<SVGSVGElement>>;
+
+export function Logo({ light = false, compact = false }: { light?: boolean; compact?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <svg viewBox="0 0 32 32" className="size-9 shrink-0" aria-hidden>
-        <rect width="32" height="32" rx="9" className={light ? 'fill-white/15' : 'fill-indigo-600'} />
-        <path d="M9 22V10h3.2l7.6 7.4V10H23v12h-3.2L12.2 14.6V22z" className="fill-white" />
-      </svg>
-      <div className="leading-tight">
-        <div className={cx('text-[15px] font-semibold', light ? 'text-white' : 'text-slate-900')}>NEC Events</div>
-        <div className={cx('text-xs', light ? 'text-indigo-200' : 'text-slate-500')}>National Engineering College</div>
+    <div className="flex items-center gap-3">
+      <div
+        className={cx(
+          'grid size-9 shrink-0 place-items-center rounded-xl shadow-lg sm:size-10',
+          light ? 'bg-white/10 ring-1 ring-white/20 shadow-black/20' : 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-500/30',
+        )}
+      >
+        <svg viewBox="0 0 32 32" className="size-6" aria-hidden>
+          <path d="M8 24V8h3.6l8.8 9.4V8H24v16h-3.6l-8.8-9.4V24z" fill="#fff" />
+        </svg>
       </div>
+      {!compact && (
+        <div className="min-w-0 leading-tight">
+          <div className={cx('whitespace-nowrap text-[15px] font-bold tracking-tight', light ? 'text-white' : 'text-fg')}>NEC Events</div>
+          <div className={cx('hidden whitespace-nowrap text-xs font-medium sm:block', light ? 'text-white/60' : 'text-muted')}>National Engineering College</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -32,17 +44,19 @@ export function Button({
   className,
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean; variant?: 'primary' | 'ghost' }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean; variant?: 'primary' | 'secondary' | 'ghost' }) {
   return (
     <button
       {...props}
       disabled={props.disabled || loading}
       className={cx(
-        'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition',
+        'group inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-semibold transition-all',
         'focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60',
         variant === 'primary' &&
-          'w-full bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-500 focus-visible:ring-indigo-500/30',
-        variant === 'ghost' && 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400/20',
+          'w-full bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-600/25 ring-1 ring-inset ring-white/10 hover:from-indigo-500 hover:to-indigo-500 hover:shadow-indigo-600/35 active:scale-[.99] focus-visible:ring-indigo-500/30',
+        variant === 'secondary' &&
+          'w-full border border-line bg-surface text-fg-2 shadow-sm hover:border-line-strong hover:bg-surface-2 focus-visible:ring-slate-400/20',
+        variant === 'ghost' && 'h-10 px-3 text-sm text-muted hover:bg-surface-2 hover:text-fg focus-visible:ring-slate-400/20',
         className,
       )}
     >
@@ -52,46 +66,73 @@ export function Button({
   );
 }
 
-type FieldProps = InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: ReactNode; trailing?: ReactNode };
+type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  error?: string;
+  hint?: ReactNode;
+  icon?: Icon;
+  /** Static text inside the field, e.g. "+91" */
+  prefix?: string;
+  trailing?: ReactNode;
+  footer?: ReactNode;
+};
 
-export function Field({ label, error, hint, trailing, className, ...props }: FieldProps) {
+export function Field({ label, error, hint, icon: I, prefix, trailing, footer, className, ...props }: FieldProps) {
   const id = useId();
   return (
     <div className={className}>
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <label htmlFor={id} className="text-sm font-medium text-slate-700">
+      <div className="mb-2 flex items-baseline justify-between">
+        <label htmlFor={id} className="text-sm font-semibold text-fg-2">
           {label}
         </label>
         {hint}
       </div>
-      <div className="relative">
+      <div
+        className={cx(
+          'group/f flex h-12 items-center rounded-xl border bg-surface shadow-sm transition-all',
+          'focus-within:ring-4',
+          error
+            ? 'border-red-300 bg-red-50/30 dark:border-red-500/60 dark:bg-red-500/5 focus-within:border-red-400 focus-within:ring-red-500/10'
+            : 'border-line hover:border-line-strong focus-within:border-indigo-500 focus-within:ring-indigo-500/10',
+        )}
+      >
+        {I && (
+          <I
+            className={cx(
+              'ml-3.5 size-[18px] shrink-0 transition-colors',
+              error ? 'text-red-400' : 'text-subtle group-focus-within/f:text-indigo-500',
+            )}
+          />
+        )}
+        {prefix && (
+          <span className="ml-3 flex h-6 items-center border-r border-line pr-3 text-[15px] font-medium text-muted">
+            {prefix}
+          </span>
+        )}
         <input
           id={id}
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-err` : undefined}
           {...props}
-          className={cx(
-            'block h-11 w-full rounded-lg border bg-white px-3.5 text-[15px] text-slate-900 shadow-xs transition placeholder:text-slate-400',
-            'focus:outline-none focus:ring-4',
-            error
-              ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-              : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/15',
-            !!trailing && 'pr-11',
-          )}
+          className="h-full w-full min-w-0 rounded-xl bg-transparent px-3 text-[15px] text-fg outline-none placeholder:text-subtle"
         />
-        {trailing && <div className="absolute inset-y-0 right-0 flex items-center pr-1.5">{trailing}</div>}
+        {trailing && <div className="mr-1.5 flex shrink-0 items-center">{trailing}</div>}
       </div>
-      {error && (
-        <p id={`${id}-err`} className="mt-1.5 text-[13px] text-red-600">
+      {error ? (
+        <p id={`${id}-err`} className="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium text-red-600 dark:text-red-400">
+          <AlertIcon className="size-3.5 shrink-0" />
           {error}
         </p>
+      ) : (
+        footer
       )}
     </div>
   );
 }
 
-export function PasswordField(props: Omit<FieldProps, 'type' | 'trailing'>) {
+export function PasswordField({ showStrength, ...props }: Omit<FieldProps, 'type' | 'trailing'> & { showStrength?: boolean }) {
   const [show, setShow] = useState(false);
+  const value = String(props.value ?? '');
   return (
     <Field
       {...props}
@@ -100,17 +141,51 @@ export function PasswordField(props: Omit<FieldProps, 'type' | 'trailing'>) {
         <button
           type="button"
           onClick={() => setShow((s) => !s)}
-          className="grid size-8 place-items-center rounded-md text-slate-400 hover:text-slate-700"
+          className="grid size-9 place-items-center rounded-lg text-subtle transition hover:bg-surface-2 hover:text-fg-2"
           aria-label={show ? 'Hide password' : 'Show password'}
         >
-          <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-            <circle cx="12" cy="12" r="3" />
-            {show && <path d="M3 3l18 18" />}
-          </svg>
+          {show ? <EyeOffIcon className="size-[18px]" /> : <EyeIcon className="size-[18px]" />}
         </button>
       }
+      footer={showStrength ? <StrengthMeter value={value} /> : props.footer}
     />
+  );
+}
+
+const STRENGTH = [
+  ['', ''],
+  ['Weak', 'bg-red-500'],
+  ['Fair', 'bg-amber-500'],
+  ['Good', 'bg-emerald-500'],
+  ['Strong', 'bg-emerald-600'],
+];
+
+function StrengthMeter({ value }: { value: string }) {
+  const score = passwordScore(value);
+  const checks = [
+    [value.length >= 8, '8+ characters'],
+    [/[A-Za-z]/.test(value), 'A letter'],
+    [/\d/.test(value), 'A number'],
+  ] as const;
+  return (
+    <div className="mt-2.5 space-y-2.5">
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 gap-1.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className={cx('h-1.5 flex-1 rounded-full transition-colors', i <= score ? STRENGTH[score][1] : 'bg-line')} />
+          ))}
+        </div>
+        <span className="w-12 text-right text-xs font-semibold text-muted">{STRENGTH[score][0]}</span>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {checks.map(([ok, label]) => (
+          <span key={label} className={cx('flex items-center gap-1 text-xs font-medium transition-colors', ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-subtle')}>
+            <CheckIcon className="size-3.5" strokeWidth={2.5} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -119,13 +194,14 @@ export function Alert({ tone = 'error', children }: { tone?: 'error' | 'success'
     <div
       role={tone === 'error' ? 'alert' : 'status'}
       className={cx(
-        'rounded-lg border px-3.5 py-2.5 text-sm',
-        tone === 'error' && 'border-red-200 bg-red-50 text-red-700',
-        tone === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        tone === 'info' && 'border-indigo-200 bg-indigo-50 text-indigo-700',
+        'flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium',
+        tone === 'error' && 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300',
+        tone === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300',
+        tone === 'info' && 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300',
       )}
     >
-      {children}
+      {tone === 'success' ? <CheckIcon className="mt-px size-4 shrink-0" strokeWidth={2.5} /> : <AlertIcon className="mt-px size-4 shrink-0" />}
+      <div>{children}</div>
     </div>
   );
 }

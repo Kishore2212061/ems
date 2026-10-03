@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ApiError } from './api';
 
-/** Wraps an async submit: loading flag, a form-level error, and per-field errors from VALIDATION_ERROR. */
+/** Wraps an async submit: loading flag, a form-level error, and per-field errors (client or server). */
 export function useSubmit() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,5 +24,13 @@ export function useSubmit() {
     }
   }
 
-  return { loading, error, setError, fields, run };
+  /** Clear one field's error as the user edits it. */
+  const clearField = (k: string) =>
+    setFields((f) => {
+      if (!(k in f)) return f;
+      const { [k]: _, ...rest } = f;
+      return rest;
+    });
+
+  return { loading, error, setError, fields, setFields, clearField, run };
 }

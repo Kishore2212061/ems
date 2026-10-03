@@ -43,7 +43,7 @@ export function OtpInput({
   };
 
   return (
-    <div className="flex justify-between gap-2" onPaste={onPaste}>
+    <div className="flex justify-between gap-2 sm:gap-3" onPaste={onPaste}>
       {Array.from({ length }, (_, i) => (
         <input
           key={i}
@@ -65,9 +65,9 @@ export function OtpInput({
           autoFocus={i === 0}
           aria-label={`Digit ${i + 1}`}
           className={[
-            'h-14 w-full min-w-0 rounded-lg border bg-white text-center text-2xl font-semibold text-slate-900 shadow-xs transition',
+            'h-14 w-full min-w-0 rounded-xl border bg-surface text-center text-2xl font-bold text-fg shadow-sm transition-all sm:h-16',
             'focus:outline-none focus:ring-4 disabled:opacity-60',
-            invalid ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/15',
+            invalid ? 'border-red-300 bg-red-50/40 dark:border-red-500/60 dark:bg-red-500/5 focus:border-red-400 focus:ring-red-500/10' : 'border-line hover:border-line-strong focus:border-indigo-500 focus:ring-indigo-500/10',
           ].join(' ')}
         />
       ))}

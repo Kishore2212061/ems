@@ -50,6 +50,10 @@ const schema = z
     JWT_ACCESS_TTL: duration('15m'),
     JWT_REFRESH_SECRET: z.string().min(32),
     JWT_REFRESH_TTL: duration('30d'),
+    /** How long revoked/rotated refresh tokens are kept for reuse detection before auto-delete. */
+    REFRESH_REVOKED_RETENTION: duration('1d'),
+    /** Refresh token is rotated (new row + new cookie) at most this often; refreshes in between reuse it. */
+    REFRESH_ROTATE_AFTER: duration('1h'),
     PASSWORD_PEPPER: z.string().min(16),
 
     OTP_LENGTH: int(6),
