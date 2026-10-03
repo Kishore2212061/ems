@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { env } from '../config/env';
 import type { OtpPurpose } from '../auth/schemas/otp-code.schema';
+import { env } from '../config/env';
+import { JobsService } from '../jobs/jobs.service';
 import { otpEmail } from './templates';
 
 export interface MailMessage {
@@ -12,16 +13,24 @@ export interface MailMessage {
 
 type Sender = (msg: MailMessage) => Promise<void>;
 
+export const EMAIL_JOB = 'email.send';
+
 /**
  * Provider-agnostic mail. EMAIL_PROVIDER=resend | smtp | console.
- * Sends are fire-and-forget from request handlers (never block an auth response on SMTP),
- * with a small retry so transient provider errors don't lose an OTP.
+ *
+ * Every email goes through the durable job queue: dispatch() persists the message before the API
+ * responds, and a worker delivers it with retries — a restart or provider hiccup can't lose an OTP.
+ * After delivery the stored payload is reduced to the recipient (the body may contain a code).
  */
 @Injectable()
 export class MailService implements OnModuleInit {
   private readonly logger = new Logger('Mail');
   private send!: Sender;
   private readonly from = `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM_ADDRESS}>`;
+
+  constructor(private readonly jobs: JobsService) {
+    jobs.register<MailMessage>(EMAIL_JOB, (m) => this.send(m), { sanitize: (m: MailMessage) => ({ to: m.to }) });
+  }
 
   async onModuleInit() {
     this.send = await this.createSender();
@@ -56,23 +65,12 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  /** Fire-and-forget with 3 attempts (0s, 1s, 3s). */
-  dispatch(msg: MailMessage): void {
-    const run = async () => {
-      for (const [i, delay] of [0, 1000, 3000].entries()) {
-        if (delay) await new Promise((r) => setTimeout(r, delay));
-        try {
-          await this.send(msg);
-          return;
-        } catch (e) {
-          this.logger.error(`Send to ${msg.to} failed (attempt ${i + 1}/3): ${(e as Error).message}`);
-        }
-      }
-    };
-    void run();
+  /** Durably queue an email (one indexed insert, ~2 ms). Delivery + retries happen in the worker. */
+  dispatch(msg: MailMessage): Promise<void> {
+    return this.jobs.enqueue(EMAIL_JOB, msg, { maxAttempts: 6 });
   }
 
   sendOtp(to: string, name: string, code: string, ttlMinutes: number, purpose: OtpPurpose) {
-    this.dispatch({ to, ...otpEmail({ name, code, ttlMinutes, purpose }) });
+    return this.dispatch({ to, ...otpEmail({ name, code, ttlMinutes, purpose }) });
   }
 }

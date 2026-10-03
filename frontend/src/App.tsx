@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { Link, Redirect, Route, Switch, useLocation } from 'wouter';
+import { Toaster } from '@/components/toast';
 import { FullPageSpinner } from '@/components/ui';
 import { refreshSession } from '@/lib/api';
 import { useAuth } from '@/store/auth';
@@ -10,6 +11,8 @@ const Signup = lazy(() => import('@/pages/Signup'));
 const VerifyOtp = lazy(() => import('@/pages/VerifyOtp'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
+// Component gallery for design QA. Dev builds only — the branch (and its chunk) is removed in production.
+const UiKit = import.meta.env.DEV ? lazy(() => import('@/pages/UiKit')) : null;
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const status = useAuth((s) => s.status);
@@ -82,8 +85,10 @@ export default function App() {
             <Dashboard />
           </RequireAuth>
         </Route>
+        {UiKit && <Route path="/__ui" component={UiKit} />}
         <Route component={NotFound} />
       </Switch>
+      <Toaster />
     </Suspense>
   );
 }

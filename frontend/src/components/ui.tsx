@@ -41,21 +41,35 @@ export function Spinner({ className = 'size-4' }: { className?: string }) {
 export function Button({
   loading,
   variant = 'primary',
+  size = 'md',
+  block = true,
   className,
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean; variant?: 'primary' | 'secondary' | 'ghost' }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  loading?: boolean;
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** md = 48 px (forms), sm = 40 px (toolbars, dialogs, tables). */
+  size?: 'md' | 'sm';
+  /** Full width (default for forms). Set false for inline buttons. */
+  block?: boolean;
+}) {
   return (
     <button
+      type="button"
       {...props}
       disabled={props.disabled || loading}
       className={cx(
-        'group inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-semibold transition-all',
+        'group inline-flex shrink-0 items-center justify-center gap-2 rounded-xl font-semibold transition-all',
         'focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60',
+        size === 'md' ? 'h-12 px-5 text-[15px]' : 'h-10 px-4 text-sm',
+        block && variant !== 'ghost' && 'w-full',
         variant === 'primary' &&
-          'w-full bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-600/25 ring-1 ring-inset ring-white/10 hover:from-indigo-500 hover:to-indigo-500 hover:shadow-indigo-600/35 active:scale-[.99] focus-visible:ring-indigo-500/30',
+          'bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-600/25 ring-1 ring-inset ring-white/10 hover:from-indigo-500 hover:to-indigo-500 hover:shadow-indigo-600/35 active:scale-[.99] focus-visible:ring-indigo-500/30',
         variant === 'secondary' &&
-          'w-full border border-line bg-surface text-fg-2 shadow-sm hover:border-line-strong hover:bg-surface-2 focus-visible:ring-slate-400/20',
+          'border border-line bg-surface text-fg-2 shadow-sm hover:border-line-strong hover:bg-surface-2 focus-visible:ring-slate-400/20',
+        variant === 'danger' &&
+          'bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-500 active:scale-[.99] focus-visible:ring-red-500/30',
         variant === 'ghost' && 'h-10 px-3 text-sm text-muted hover:bg-surface-2 hover:text-fg focus-visible:ring-slate-400/20',
         className,
       )}

@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { hashPassword } from '../auth/password';
+import { AuditService } from '../audit/audit.service';
 import { env } from '../config/env';
 import { User, USER_MODEL } from '../users/user.schema';
 import { Organization, ORGANIZATION_MODEL } from './organization.schema';
@@ -17,6 +18,7 @@ export class SeedService implements OnApplicationBootstrap {
   constructor(
     @InjectModel(USER_MODEL) private readonly users: Model<User>,
     @InjectModel(ORGANIZATION_MODEL) private readonly orgs: Model<Organization>,
+    private readonly audit: AuditService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -31,7 +33,7 @@ export class SeedService implements OnApplicationBootstrap {
     if (await this.users.exists({ email })) return;
 
     try {
-      await this.users.create({
+      const admin = await this.users.create({
         email,
         full_name: env.SEED_SUPER_ADMIN_NAME,
         password_hash: await hashPassword(env.SEED_SUPER_ADMIN_PASSWORD),
@@ -39,6 +41,7 @@ export class SeedService implements OnApplicationBootstrap {
         first_login_otp_done: false, // first login still requires email OTP
         roles: [{ role: 'SUPER_ADMIN', scope_type: 'ORG', scope_id: null, granted_by: null }],
       });
+      await this.audit.recordSafe({ action: 'system.super_admin_seeded', entity: 'user', entityId: admin._id, after: { email } });
       this.logger.log(`Super Admin created: ${email}`);
     } catch (e: any) {
       if (e?.code !== 11000) throw e; // another replica seeded it first

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
+import { AuditService } from '../audit/audit.service';
 import { Errors } from '../common/app-exception';
 import { env } from '../config/env';
 import { PUBLIC_USER_FIELDS, PublicUserDoc, toPublicUser, User, USER_MODEL } from '../users/user.schema';
@@ -9,9 +10,6 @@ import { OtpService } from './otp.service';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './password';
 import { REFRESH_TOKEN_MODEL, RefreshToken } from './schemas/refresh-token.schema';
 import { ClientCtx, TokenService } from './token.service';
-
-/** If two tabs refresh simultaneously, the loser presents an already-rotated token within this window. */
-const ROTATION_GRACE_MS = 30_000;
 
 /**
  * Revoked tokens are kept only long enough to catch replay of a stolen token, then the TTL index
@@ -41,6 +39,7 @@ export class AuthService {
     @InjectModel(REFRESH_TOKEN_MODEL) private readonly refreshTokens: Model<RefreshToken>,
     private readonly tokens: TokenService,
     private readonly otp: OtpService,
+    private readonly audit: AuditService,
   ) {}
 
   // ── Signup ────────────────────────────────────────────────────────────────
@@ -96,7 +95,7 @@ export class AuthService {
     }
 
     if (!(await verifyPassword(user.password_hash, dto.password))) {
-      await this.recordFailedLogin(user._id);
+      await this.recordFailedLogin(user._id, ctx);
       throw Errors.invalidCredentials();
     }
 
@@ -112,7 +111,7 @@ export class AuthService {
     return this.startSession(user, ctx);
   }
 
-  private async recordFailedLogin(userId: Types.ObjectId) {
+  private async recordFailedLogin(userId: Types.ObjectId, ctx: ClientCtx) {
     const upd = await this.users
       .findOneAndUpdate({ _id: userId }, { $inc: { failed_login_count: 1 } }, { new: true, projection: 'failed_login_count' })
       .lean();
@@ -121,6 +120,13 @@ export class AuthService {
         { _id: userId },
         { $set: { failed_login_count: 0, locked_until: new Date(Date.now() + env.LOGIN_LOCK_MINUTES * 60_000) } },
       );
+      await this.audit.recordSafe({
+        action: 'auth.account_locked',
+        entity: 'user',
+        entityId: userId,
+        meta: { failedAttempts: upd.failed_login_count, lockMinutes: env.LOGIN_LOCK_MINUTES },
+        ip: ctx.ip,
+      });
     }
   }
 
@@ -224,10 +230,18 @@ export class AuthService {
       .lean();
     if (!user) throw Errors.accountSuspended();
 
-    await this.refreshTokens.updateMany(
+    const revoked = await this.refreshTokens.updateMany(
       { user_id: user._id, revoked_at: null },
       { $set: { revoked_at: now, revoke_reason: 'PASSWORD_RESET', expires_at: purgeAt() } },
     );
+    await this.audit.recordSafe({
+      actorId: user._id,
+      action: 'auth.password_reset',
+      entity: 'user',
+      entityId: user._id,
+      meta: { sessionsRevoked: revoked.modifiedCount },
+      ip: ctx.ip,
+    });
     return this.startSession(user, ctx);
   }
 
@@ -266,7 +280,7 @@ export class AuthService {
     }
 
     if (token.revoked_at) {
-      if (token.revoke_reason === 'ROTATED' && now.getTime() - token.revoked_at.getTime() < ROTATION_GRACE_MS) {
+      if (token.revoke_reason === 'ROTATED' && now.getTime() - token.revoked_at.getTime() < env.REFRESH_REUSE_GRACE * 1000) {
         // Another tab just rotated this token. Hand out an access token but no new cookie —
         // the browser already holds the winner's cookie.
         return this.accessFor(await this.loadSessionUser(token.user_id, token.sv));
@@ -277,6 +291,13 @@ export class AuthService {
           { family_id: token.family_id, revoked_at: null },
           { $set: { revoked_at: now, revoke_reason: 'REUSE_DETECTED', expires_at: purgeAt() } },
         );
+        await this.audit.recordSafe({
+          action: 'auth.refresh_reuse_detected',
+          entity: 'user',
+          entityId: token.user_id,
+          meta: { familyId: token.family_id, userAgent: ctx.userAgent },
+          ip: ctx.ip,
+        });
       }
       throw Errors.unauthorized('SESSION_REVOKED', 'Your session has ended. Please log in again.');
     }
@@ -303,6 +324,25 @@ export class AuthService {
       throw Errors.unauthorized('SESSION_REVOKED', 'Your session has ended. Please log in again.');
     }
     return user;
+  }
+
+  /**
+   * Sign a user out everywhere, effective immediately for refresh and within one access-token TTL
+   * for API calls. Use for role removal and suspension; pass `session` to make it part of the
+   * same transaction as the change. Returns the number of sessions ended.
+   */
+  async revokeAllSessions(
+    userId: Types.ObjectId | string,
+    reason: 'ROLE_CHANGED' | 'SUSPENDED' | 'PASSWORD_RESET',
+    session?: ClientSession,
+  ): Promise<number> {
+    await this.users.updateOne({ _id: userId }, { $inc: { session_version: 1 } }, { session });
+    const r = await this.refreshTokens.updateMany(
+      { user_id: userId, revoked_at: null },
+      { $set: { revoked_at: new Date(), revoke_reason: reason, expires_at: purgeAt() } },
+      { session },
+    );
+    return r.modifiedCount;
   }
 
   async logout(raw: string | undefined) {

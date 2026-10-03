@@ -62,7 +62,7 @@ export class OtpService {
       code_hash: hashCode(user._id, purpose, code),
       expires_at: new Date(now + env.OTP_TTL_MINUTES * 60_000),
     });
-    this.mail.sendOtp(user.email, user.full_name, code, env.OTP_TTL_MINUTES, purpose);
+    await this.mail.sendOtp(user.email, user.full_name, code, env.OTP_TTL_MINUTES, purpose);
     return env.OTP_RESEND_COOLDOWN_SECONDS;
   }
 

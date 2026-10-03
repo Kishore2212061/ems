@@ -49,3 +49,10 @@ input:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
   caret-color: var(--color-fg);
 }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

@@ -5,10 +5,13 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "dev": "nest start --watch --preserveWatchOutput",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
+    "@fastify/etag": "^6.2.0",
     "@fastify/helmet": "^13.1.1",
     "@nestjs/common": "^11.2.7",
     "@nestjs/core": "^11.2.7",
@@ -26,10 +29,15 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
+    "@nestjs/testing": "^11.2.7",
+    "@swc/core": "^1.16.13",
     "@types/node": "^22.20.5",
     "@types/nodemailer": "^8.0.2",
+    "mongodb-memory-server-core": "^11.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "unplugin-swc": "^2.0.0",
+    "vitest": "^5.0.3"
   },
   "private": true,
   "engines": {

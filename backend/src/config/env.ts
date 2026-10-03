@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs';
 import { z } from 'zod';
 
 // Local dev convenience: load backend/.env if present. In Docker/Railway, vars come from the platform.
-if (existsSync('.env')) process.loadEnvFile('.env');
+// Never under tests: they must not inherit real SMTP/Atlas settings.
+if (process.env.NODE_ENV !== 'test' && existsSync('.env')) process.loadEnvFile('.env');
 
 // Some Windows/VPN setups expose 127.0.0.1 as Node's resolver, which breaks Atlas SRV lookups
 // (querySrv ECONNREFUSED). Optional override, e.g. DNS_SERVERS=8.8.8.8,1.1.1.1. Not needed on Railway.
@@ -54,6 +55,8 @@ const schema = z
     REFRESH_REVOKED_RETENTION: duration('1d'),
     /** Refresh token is rotated (new row + new cookie) at most this often; refreshes in between reuse it. */
     REFRESH_ROTATE_AFTER: duration('1h'),
+    /** A just-rotated token presented within this window is a benign multi-tab race, not theft. */
+    REFRESH_REUSE_GRACE: duration('30s'),
     PASSWORD_PEPPER: z.string().min(16),
 
     OTP_LENGTH: int(6),
@@ -63,6 +66,12 @@ const schema = z
     OTP_MAX_PER_WINDOW: int(3),
     LOGIN_MAX_ATTEMPTS: int(5),
     LOGIN_LOCK_MINUTES: int(15),
+
+    /** Background job worker (MongoDB queue). */
+    JOBS_ENABLED: bool(true),
+    JOBS_CONCURRENCY: int(4),
+    JOBS_IDLE_POLL_MS: int(2000),
+    JOBS_LEASE_SECONDS: int(60),
 
     EMAIL_PROVIDER: z.enum(['resend', 'smtp', 'console']).default('console'),
     RESEND_API_KEY: z.string().optional(),

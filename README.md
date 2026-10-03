@@ -9,6 +9,7 @@ Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.m
 | # | Module | Status |
 |---|--------|--------|
 | 1 | Auth — signup, first-login email OTP, login, refresh rotation, logout | ✅ |
+| 1.5 | Foundations: tests (104), permissions, audit log, job queue, shared UI, CI | ✅ |
 | 2 | Global events & multi-role switching | ⏳ |
 
 ## Architecture (Module 1)
@@ -50,6 +51,18 @@ cd frontend && npm install && npm run dev   # http://localhost:5173 (proxies /ap
 ```
 
 With `EMAIL_PROVIDER=console`, OTP emails are printed in the backend log.
+
+### Tests
+
+```bash
+cd backend && npm test      # 73 e2e/unit tests; uses a local mongod if installed, else downloads one
+```
+
+```bash
+cd frontend && npm test && npm run build && npm run check:bundle   # 31 tests + gzip budget gate
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.
 
 ### Full stack in Docker (mirrors Railway)
 

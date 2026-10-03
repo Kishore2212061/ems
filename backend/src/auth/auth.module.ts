@@ -27,6 +27,6 @@ import { TokenService } from './token.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, OtpService, TokenService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
-  exports: [TokenService, MongooseModule],
+  exports: [AuthService, TokenService, MongooseModule],
 })
 export class AuthModule {}

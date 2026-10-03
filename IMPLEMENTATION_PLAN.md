@@ -60,8 +60,8 @@ Every module follows the same loop, and a module is **not done** until all five 
 | `POST /auth/switch-role` + role switcher UI | Module 2 |
 | Admin invites (`/accept-invite/:token`) | Module 2 |
 | Profile edit, change password, active sessions list (`/my/profile`, `/my/security`) | Module 2 |
-| Audit log | Module 1.5 |
-| Automated tests (none exist yet) | Module 1.5 |
+| Audit log | ✅ Module 1.5 |
+| Automated tests | ✅ Module 1.5 (Module 1 fully backfilled) |
 | Mongo-backed rate-limit store (needed only with >1 backend instance) | Module 10 |
 
 ---
@@ -112,16 +112,82 @@ frontend/src/
 ### 1.5 Definition of Done (per module)
 - [ ] All endpoints implemented with zod DTOs, indexes and audit logging where relevant
 - [ ] Unit + e2e tests for every edge case in the module's table are green
-- [ ] Screens built, mobile-checked, dark + light checked
-- [ ] Initial JS for public pages stays within the [budget](#12-bundle--performance-budgets)
+- [ ] **Module Quality bar passed**: backend optimisation, frontend design and gzip budget (§1.6 + the module's own "Quality bar" table)
+- [ ] Screens built, mobile-checked (320 / 768 / 1440 px), dark + light checked
 - [ ] Deployed to Railway; live smoke test passes; `/api/v1/health` shows the new `version`
 - [ ] README module table updated
+
+### 1.6 Quality Bar — applies to every module
+
+Every module has three standards: **highly optimised backend**, **modern, professional, consistent frontend**, and **minimum gzip**. Each module section below ends with a "Quality bar" table listing its specific targets; these global rules always apply on top.
+
+#### A. Backend — highly optimised
+| # | Rule | How it's enforced |
+|---|---|---|
+| B1 | Every query hits an index (no `COLLSCAN`) | e2e tests run `explain()` on each list/lookup and assert `IXSCAN` |
+| B2 | `.lean()` + narrow projection on every read; responses contain only what the screen needs | Code review; response-size assertions in tests |
+| B3 | No N+1: related data is fetched with one `$in` query or one `$lookup`, never in a loop | Tests count DB calls per request (mongoose debug hook) |
+| B4 | Hot paths do ≤ 3 DB round trips; prefer single-document atomic updates over transactions when possible | Documented per endpoint in the module's API table |
+| B5 | Cursor pagination only, `limit ≤ 100`; every list is bounded | DTO validation |
+| B6 | Aggregations start with an indexed `$match`, then `$project` early | Reviewed with `explain('executionStats')` |
+| B7 | Public GETs send `Cache-Control` + `ETag` (304s cost nothing); hot config (fee settings, permission matrix, departments) cached in memory with a 30–60 s TTL | Tests assert headers |
+| B8 | Slow side effects (email, PDF, gateway, export) go to the job queue; request p95 targets met | `autocannon` benchmark per module in CI (fails if p95 regresses > 20 %) |
+| B9 | JSON is compact: camelCase public shape, no nulls for absent optionals, dates as ISO strings, ids as strings | `toPublic()` mapper per entity |
+| B10 | Every query has `maxTimeMS` (global plugin already in place) and the pool is sized via `DB_POOL_MAX` | Already implemented in Module 1 |
+
+#### B. Frontend — modern, professional, consistent
+The design system started in Module 1 is the **only** visual vocabulary. New screens reuse it; they don't invent new styles.
+
+| Area | Standard |
+|---|---|
+| Colours | Semantic tokens only (`bg-page`, `bg-surface`, `bg-surface-2`, `border-line`, `text-fg`, `text-fg-2`, `text-muted`, `text-subtle`). **Indigo** is the single brand colour; status colours are emerald (success), amber (warning), red (error), sky (info). No raw `slate-*`, `violet`, `fuchsia` |
+| Themes | Medium-dark default + light; every screen checked in both |
+| Typography | Plus Jakarta Sans. Scale: page title 28/32 px bold · section 18 px bold · body 15 px · meta 13 px · label 14 px semibold |
+| Shape & spacing | Inputs/buttons `h-12 rounded-xl`; cards `rounded-2xl p-5 sm:p-6`; hero/feature blocks `rounded-3xl`; 4 px spacing grid; max content width `max-w-6xl` |
+| Components | Build once in `components/` and reuse: `Button`, `Field`, `PasswordField`, `Alert`, `Badge`, `Card`, `PageHeader`, `StatTile`, `EmptyState`, `Skeleton`, `DataList` (responsive table → cards on mobile), `Dialog` (native `<dialog>`), `Toast`, `Tabs`, `ConfirmDialog` (type-to-confirm for destructive actions) |
+| States | Every data view has **loading (skeleton, not spinner)**, **empty (EmptyState with action)**, **error (Alert + Retry)** and **success** states |
+| Icons | Inline Lucide paths in `components/icons.tsx` only, 1.8 stroke, sized 16/18/20/24 px |
+| Motion | 150–200 ms, `transform`/`opacity` only, honour `prefers-reduced-motion`; no `filter: blur`/`backdrop-blur` on large areas (slow on budget phones) |
+| Mobile | Mobile-first; tested at 320 px; touch targets ≥ 44 px; no horizontal scroll; bottom sheets instead of side panels on phones |
+| Accessibility | Labels on all inputs, visible focus ring, WCAG AA contrast in both themes, keyboard-operable dialogs, `aria-live` for toasts and scan results |
+| Copy | Short, friendly, action-oriented; errors say what to do next ("Try again in 5 minutes"), never raw codes |
+
+#### C. Gzip — minimum size
+| # | Rule |
+|---|---|
+| G1 | Every route is `lazy()`; each surface (`public`, `my`, `admin`, `scan`) is its own chunk group and never imported by another |
+| G2 | **No new runtime dependency** without checking its gzip size first (bundlephobia) and recording it in the module's Quality bar table. Prefer native browser APIs (`<dialog>`, `Intl`, `BarcodeDetector`, `IndexedDB`, `fetch`) |
+| G3 | Heavy, rarely used code (markdown renderer, QR encoder/decoder, Razorpay script, charts) is loaded with dynamic `import()` only where it's used |
+| G4 | Static assets pre-compressed at build (`gzip -9`, already in place) and served with `gzip_static`; hashed assets cached 1 year |
+| G5 | API JSON compressed by nginx (`gzip_proxied any`, already on) and kept small by B2/B9 |
+| G6 | Images: Cloudinary `f_auto,q_auto,w_<display width>`, `loading="lazy"`, explicit `width`/`height` (no layout shift) |
+| G7 | CI fails the build if any chunk exceeds its budget (§12) |
 
 ---
 
 ## 2. Module 1.5 — Foundations
 
 **Goal:** the shared building blocks every later module depends on. No new user-facing screens.
+
+> ### ✅ Status: DONE (2026-10-03)
+> | Area | Result |
+> |---|---|
+> | Backend tests | **73 passing** in ~22 s: Vitest + SWC, real AppModule on Fastify `inject`, MongoDB 8 replica set (local `mongod` if installed, else auto-download), isolated DB per test file, emails captured |
+> | Frontend tests | **31 passing** in ~10 s: Vitest + Testing Library + happy-dom |
+> | Index checks (B1) | 13 query plans asserted `IXSCAN` (auth, audit, jobs) |
+> | RBAC | Permission matrix, `@RequirePermission` in the global guard (0 DB calls), `can/assertCan/scopeFilter`, race-proof last-Super-Admin rule, `revokeAllSessions` |
+> | Audit log | Append-only, secrets redacted, transactional; records lockouts, password resets, refresh-token reuse, seeding |
+> | Job queue | Mongo-backed: atomic claims, leases + crash recovery, exponential back-off, idempotency keys, transactional enqueue, payload sanitising. **All email now goes through it** |
+> | Shared UI | `Badge`, `Card`, `PageHeader`, `Tabs`, `StatTile`, `EmptyState`, `Skeleton`, `DataList`, `Dialog`, `ConfirmDialog`, `Toast`; `Button` gained `size`/`block`/`danger`; dev-only `/__ui` gallery (excluded from prod) |
+> | CI | `.github/workflows/ci.yml`: typecheck → test → build for both apps + gzip budget gate (`npm run check:bundle`) — runs on first push |
+> | Bundle | Initial JS **74.7 KB** gz (budget 95), CSS **12.0 KB** (budget 15); shared components added +0.4 KB to the initial chunk |
+>
+> **Found & fixed by the new tests**
+> 1. *Campus NAT bug (production):* `verify-otp` / `resend-otp` / `reset-password` were rate-limited per **IP only** (10/min) — a whole college behind one IP could verify just 10 OTPs a minute. Now bucketed per user via the `otpToken` subject. Regression test: 15 students on one IP verify concurrently.
+> 2. *Last-Super-Admin race:* a plain count inside a transaction lets two admins demote each other to zero (verified by disabling the fix → test fails with `[ok, ok]`). Fixed with a shared guard-document write that forces a write conflict.
+> 3. *Queue drain livelock (test helper):* concurrent `drain()` calls kept re-waking each other (2 000+ claims in 3 s). Fixed; suite stable across repeated runs.
+>
+> **Decisions:** worker claims immediately while busy, idles at 2 s, and `enqueue()` wakes it (≈0 latency, 0.5 queries/s when idle). Email delivery retries up to 6× with back-off. SWC native cache is project-local (`node_modules/.cache/swc`) because some Windows profiles reject the default cache folder.
 
 ### 2.1 Test infrastructure
 | Piece | Choice | Notes |
@@ -149,7 +215,7 @@ Collection `job_queue`:
 { type, payload, status: 'PENDING'|'RUNNING'|'DONE'|'FAILED',
   run_at, attempts, max_attempts, locked_until, last_error, idempotency_key (unique, sparse), created_at }
 ```
-- Worker runs in-process (`setInterval` 1 s) and claims jobs atomically:
+- Worker runs in-process (immediate while busy, 2 s idle poll, woken by `enqueue()`) and claims jobs atomically:
   `findOneAndUpdate({status:'PENDING', run_at:{$lte:now}}, {$set:{status:'RUNNING', locked_until: now+60s}, $inc:{attempts:1}})`
 - Retry with exponential backoff (`run_at = now + 2^attempts s`), then `FAILED` + an admin alert.
 - Stuck-job recovery: `RUNNING` with `locked_until < now` goes back to `PENDING`.
@@ -169,6 +235,16 @@ Collection `job_queue`:
 | Same idempotency key enqueued twice | Second insert hits the unique index → treated as success |
 | Demoting the last Super Admin | `409 LAST_SUPER_ADMIN` |
 | User has no permission | `403 FORBIDDEN` with the required permission in `details` |
+
+### 2.6 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Job claim = 1 atomic `findOneAndUpdate` on the `{status, run_at}` index; worker claims immediately while busy, polls every 2 s when idle and is woken by `enqueue()` (idle cost ≈ 0.5 indexed queries/s) |
+| ⚙️ Backend | Permission checks read JWT claims only (0 DB calls); permission matrix is a frozen in-memory map |
+| ⚙️ Backend | Audit writes ride inside the caller's transaction/session, no extra round trip outside it |
+| ⚙️ Backend | Test suite boots one in-memory replica set per run (not per test) so the suite stays < 60 s |
+| 🎨 Frontend | Build the shared components listed in §1.6-B (`Badge`, `Card`, `PageHeader`, `StatTile`, `EmptyState`, `Skeleton`, `DataList`, `Dialog`, `Toast`, `Tabs`, `ConfirmDialog`) plus a dev-only `/__ui` page showing every component in both themes |
+| 📦 Gzip | Shared components add ≤ 4 KB gz to the main chunk; `/__ui` excluded from production builds |
 
 ---
 
@@ -241,6 +317,17 @@ Collection `job_queue`:
 ### 3.5 Deploy check
 Create *Tech Fest '25* and a second test fest, publish both and check both on `/`. Invite a CSE admin and accept on a phone. Switch between Super Admin and CSE Admin.
 
+### 3.6 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | `GET /global-events` (public): 1 indexed query, `Cache-Control: public, max-age=60` + ETag, p95 < 40 ms |
+| ⚙️ Backend | Fest detail returns departments via one `$in` lookup (no N+1) |
+| ⚙️ Backend | `switch-role` = 0 DB writes (validates against JWT roles + 1 read for `session_version`), p95 < 30 ms |
+| ⚙️ Backend | Admin user search: prefix-anchored match on indexed lowercase `email`/`name` fields, never an unanchored regex |
+| 🎨 Frontend | Public home: hero + fest cards with banner (Cloudinary `w_800`), countdown chip, status badge. Admin shell: collapsible sidebar (bottom tab bar on mobile), sticky topbar with the role-switcher pill |
+| 🎨 Frontend | Create-fest wizard: 3-step stepper, inline validation, draft autosaved to `sessionStorage` |
+| 📦 Gzip | `/` initial ≤ 95 KB total; `admin` chunk group ≤ 45 KB at this stage; TanStack Query (~13 KB) loaded only in authenticated chunks |
+
 ---
 
 ## 4. Module 3 — Local Event Catalog & Seed Data
@@ -299,6 +386,17 @@ Also `local_event_templates`: reusable blueprints (copy fields on create).
 | HTML/script in description | Stripped by the server sanitiser |
 | Seed script run twice | No duplicates (upsert by `{global_event_id, slug}`) |
 | Search with special regex chars | Use `$text` (not regex), so no ReDoS |
+
+### 4.5 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Event list: compound index matches filter + sort exactly; projection excludes `rules_md`/`description_md` (list payload < 1 KB per event) |
+| ⚙️ Backend | `seats_left` computed from denormalised counters (no `count()`); detail endpoint ETag-cached 30 s |
+| ⚙️ Backend | Markdown sanitised **once at save** and stored as safe HTML, so reads never re-sanitise |
+| ⚙️ Backend | Search: weighted `$text` index (name 10, description 1), limit 20 |
+| 🎨 Frontend | Directory: sticky filter bar (chips scroll horizontally on mobile), skeleton grid while loading, event cards with a category colour stripe, price pill and seats-left bar (amber < 20 %, red < 5 %) |
+| 🎨 Frontend | Authoring studio: tabs on desktop, accordion on mobile, sticky save bar with an "Unsaved changes" indicator |
+| 📦 Gzip | Directory chunk ≤ 8 KB; markdown renderer lazy (detail page only, ≤ 12 KB); infinite scroll via `IntersectionObserver` (0 KB) |
 
 ---
 
@@ -361,6 +459,18 @@ Register click
 | Server crash between `$inc` and the hold insert | Transaction prevents a stranded counter; a nightly reconcile job recomputes `seats_held` from `seat_holds` |
 | Teammate claims with someone else's logged-in account | Allowed only if the emails match; otherwise `403 CLAIM_EMAIL_MISMATCH` |
 
+### 5.6 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Hold = 1 atomic `findOneAndUpdate` with `$expr` guard + 1 insert in one transaction; p95 < 150 ms under 200 concurrent requests |
+| ⚙️ Backend | Duplicate-member check = 1 query using the partial unique index `{local_event_id, email}` with `$in` over all member emails |
+| ⚙️ Backend | Idempotency keys stored with a 24 h TTL; replays return the cached response without touching counters |
+| ⚙️ Backend | Sweeper uses the `{status, expires_at}` index and processes batches of 100 |
+| ⚙️ Backend | Load test (k6): 500 users racing for 50 seats → 0 oversell, p95 < 300 ms |
+| 🎨 Frontend | Register sheet: bottom sheet on mobile / dialog on desktop; teammate rows with remove buttons; live team-size counter; leader row prefilled |
+| 🎨 Frontend | Checkout: prominent hold countdown (amber at 2 min), clear fee breakdown table, one primary action |
+| 📦 Gzip | Register sheet ≤ 6 KB gz (lazy on first click, not on page load); `/my/registrations` chunk ≤ 7 KB |
+
 ---
 
 ## 6. Module 5 — Payments (Razorpay + Pay at Venue)
@@ -416,6 +526,16 @@ Register click
 
 **Testing payments:** use Razorpay **test mode** keys and test cards/UPI. Webhooks locally via `ngrok`/`cloudflared` or by POSTing recorded payloads with a computed signature in e2e tests.
 
+### 6.6 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | `finalise()` = one transaction of conditional updates, safe to call N times; webhook responds 200 in < 100 ms and defers emails/tickets to jobs |
+| ⚙️ Backend | Fee settings cached in memory (60 s TTL, invalidated on update); the breakdown is a pure function (no I/O) |
+| ⚙️ Backend | Razorpay client reused (keep-alive), 8 s timeout, 1 retry on network errors only |
+| ⚙️ Backend | Invoice PDF rendered once per order by a job and cached; downloads stream the stored file |
+| 🎨 Frontend | Payment status page: animated success check, order summary, "View tickets" CTA; failure page with a clear retry path; amounts via `Intl.NumberFormat('en-IN', {style:'currency', currency:'INR'})` |
+| 📦 Gzip | Razorpay `checkout.js` injected only on `/checkout/*` (0 KB in our bundle); checkout chunk ≤ 6 KB |
+
 ---
 
 ## 7. Module 6 — Tickets & Signed QR
@@ -457,6 +577,16 @@ Indexes: `code` unique, `jti` unique, `{local_event_id:1, status:1}`, `{user_id:
 | Forged/edited QR | Signature fails → scanner shows `INVALID_TICKET` |
 | Event time changes | `exp` recomputed on next fetch; scan still checks the server ledger |
 | Registration refunded | All its tickets → `VOID` |
+
+### 7.6 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Ticket job uses one `insertMany` (ordered: false) per registration; duplicates ignored via the unique index |
+| ⚙️ Backend | QR JWT kept short (≤ 180 chars → low-density QR that scans fast); signing keys cached by `kid` |
+| ⚙️ Backend | Email QR PNG generated in the job (~2 KB per image) |
+| 🎨 Frontend | Ticket screen reuses the ticket-card design from the login page; QR on a white panel with quiet zone in both themes; Wake Lock keeps the screen on |
+| 🎨 Frontend | Ticket list: swipeable cards on mobile with status badges (Active / Payment due / Used / Void) |
+| 📦 Gzip | QR encoder (`qrcode-generator` ~5 KB) lazy on the ticket page only; ticket chunk ≤ 8 KB total |
 
 ---
 
@@ -502,6 +632,16 @@ Index `{local_event_id:1, scanned_at:-1}`, `{ticket_id:1}`.
 | iOS Safari camera quirks | Test on a real iPhone; HTTPS is required (Railway provides it) |
 | Scanning before check-in opens | `NOT_YET_OPEN` with the opening time |
 
+### 8.5 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Scan = JWT verify (~0.1 ms CPU) + 1 conditional `findOneAndUpdate` + 1 insert; p95 < 120 ms; no transaction on the hot path |
+| ⚙️ Backend | Geofence: haversine in memory; venue + policy cached per event for 60 s |
+| ⚙️ Backend | `/checkins/sync` uses `bulkWrite` ordered by `scanned_at`, ≤ 500 scans per request |
+| 🎨 Frontend | Full-screen camera with a framing guide; result flash fills the screen (green / amber / red) with icon + attendee name + vibration; offline banner with pending count; 56 px buttons for one-handed use |
+| 🎨 Frontend | Scanner always uses the dark theme (glare and battery at the gate) |
+| 📦 Gzip | Scanner chunk ≤ 25 KB using native `BarcodeDetector`; fallback decoder (~16 KB) loads only when it is missing; service worker ≤ 2 KB; `idb-keyval` ~0.6 KB |
+
 ---
 
 ## 9. Module 8 — Refunds & Cancellations
@@ -539,6 +679,15 @@ Index `{local_event_id:1, scanned_at:-1}`, `{ticket_id:1}`.
 | Refund of a ticket already USED | Blocked unless Super Admin overrides |
 | Webhook says refund failed after success was shown | Status reverts to FAILED; finance alerted |
 
+### 9.6 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Refund jobs share one global token bucket (5/s); each job = 1 gateway call + 1 conditional update |
+| ⚙️ Backend | Batch progress via `$inc` counters (no recount); batch jobs created with one `insertMany` |
+| ⚙️ Backend | Cancel endpoint returns as soon as the batch is created; the work happens in jobs |
+| 🎨 Frontend | Refund tracker as a vertical timeline (Requested → Approved → Processing → Credited); admin queue as `DataList` with bulk approve; cancel uses `ConfirmDialog` (type the event name) |
+| 📦 Gzip | Each refund screen ≤ 6 KB, inside the `admin` / `my` chunk groups |
+
 ---
 
 ## 10. Module 9 — Analytics, Exports & Live SSE
@@ -570,6 +719,15 @@ Charts: hand-rolled SVG sparklines and bars (a few KB) rather than a chart libra
 | Finance requests a PII export without permission | Masked columns |
 | Timezone | All "daily" buckets use `Asia/Kolkata` (`SEED_TIMEZONE`), not UTC |
 
+### 10.5 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Dashboards read `daily_stats` only (≤ 1 doc per event per day), p95 < 60 ms; heavy reports served from `report_cache` |
+| ⚙️ Backend | SSE: one in-process listener per channel shared by all clients (fan-out), never one DB poll per client; ≤ 2 events/s per channel |
+| ⚙️ Backend | Exports stream cursor → CSV with backpressure; memory stays flat (< 50 MB) for 100 k rows |
+| 🎨 Frontend | KPI `StatTile`s with delta vs last edition, hand-rolled SVG sparklines/bars in brand indigo, live counter with a subtle pulse; `DataList` tables with sticky headers |
+| 📦 Gzip | Analytics chunk ≤ 15 KB (SVG charts, no chart library); `EventSource` is native (0 KB) |
+
 ---
 
 ## 11. Module 10 — Hardening & Go-Live
@@ -585,6 +743,14 @@ Charts: hand-rolled SVG sparklines and bars (a few KB) rather than a chart libra
 | Load test | k6: 500 concurrent registrations on one event, 100 scans/min at one gate; p95 < 300 ms |
 | Privacy | Terms + privacy page, consent checkbox at signup, account deletion (anonymise), data export (DPDP Act) |
 | Final E2E | The 12-point checklist in the system docs §19 on production |
+
+### 11.1 Quality bar
+| Type | Target |
+|---|---|
+| ⚙️ Backend | Go-live k6 profile: 500 concurrent registrations + 100 scans/min + live dashboards; every p95 target in §12 met on the production Railway plan |
+| ⚙️ Backend | Atlas Performance Advisor reviewed; every suggested index applied or justified |
+| 🎨 Frontend | Full design QA: every screen at 320 / 768 / 1440 px × dark / light; Lighthouse ≥ 95 (performance, accessibility, best practices) on `/`, `/login`, `/events` |
+| 📦 Gzip | Final budget report committed to `docs/bundle-report.md`; CI budget gate active |
 
 ---
 
@@ -616,7 +782,7 @@ Add a CI step that fails the build if any budget is exceeded (`vite build` outpu
 | Order | Module | Est. effort* | Depends on |
 |---|---|---|---|
 | 0 | Finish Module 1 deploy (§0) | 0.5 day | — |
-| 1 | **1.5 Foundations** (tests, RBAC, job queue, audit) | 2–3 days | 0 |
+| 1 | **1.5 Foundations** (tests, RBAC, job queue, audit) ✅ | done | 0 |
 | 2 | **2 Global events, departments, roles, invites, profile** | 4–5 days | 1.5 |
 | 3 | **3 Local events + seed** | 3–4 days | 2 |
 | 4 | **4 Registrations + seat holds** | 4–5 days | 3 |
