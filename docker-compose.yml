@@ -1,0 +1,18 @@
+# Local full-stack run that mirrors Railway: http://localhost:8080
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      TRUST_PROXY_HOPS: "1"
+    ports: ["4000:4000"]
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      PORT: "8080"
+      BACKEND_URL: http://backend:4000
+    ports: ["8080:8080"]
+    depends_on: [backend]
+    restart: unless-stopped

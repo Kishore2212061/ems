@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+.claude/
+# Original doc contains live secrets — the redacted copy lives in docs/
+/ems_full_system_documentation.md

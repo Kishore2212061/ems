@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+
+@theme {
+  /* System font stack: zero font download, native look on every OS. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
