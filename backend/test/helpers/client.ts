@@ -17,7 +17,7 @@ export function client(app: NestFastifyApplication, opts: { ip?: string } = {}) 
   async function req<T = any>(
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
     url: string,
-    o: { body?: unknown; token?: string; cookies?: Record<string, string>; ip?: string } = {},
+    o: { body?: unknown; token?: string; cookies?: Record<string, string>; ip?: string; headers?: Record<string, string> } = {},
   ): Promise<Res<T>> {
     const cookies = o.cookies ?? jar;
     const cookieHeader = Object.entries(cookies)
@@ -31,6 +31,7 @@ export function client(app: NestFastifyApplication, opts: { ip?: string } = {}) 
       headers: {
         ...(o.token && { authorization: `Bearer ${o.token}` }),
         ...(cookieHeader && { cookie: cookieHeader }),
+        ...o.headers,
       },
     });
     const setCookies = res.cookies as Res['setCookies'];

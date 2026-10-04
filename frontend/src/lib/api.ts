@@ -5,7 +5,17 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
-    public details?: { fields?: Record<string, string>; retryAfterSec?: number; attemptsLeft?: number },
+    public details?: {
+      fields?: Record<string, string>;
+      retryAfterSec?: number;
+      attemptsLeft?: number;
+      /** Registration conflicts: who, whether it's the signed-in person, their registration and the other event. */
+      email?: string;
+      self?: boolean;
+      code?: string;
+      event?: { name: string | null; startsAt: string; endsAt: string };
+      [k: string]: unknown;
+    },
   ) {
     super(message);
   }
@@ -30,8 +40,10 @@ export function clearSession() {
   useAuth.getState().setUser(null);
 }
 
-async function raw<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
+type Extra = { headers?: Record<string, string> };
+
+async function raw<T>(method: string, path: string, body?: unknown, extra?: Extra): Promise<T> {
+  const headers: Record<string, string> = { ...extra?.headers };
   // Files (poster uploads) go as the raw body with their own type; everything else is JSON.
   const file = typeof Blob !== 'undefined' && body instanceof Blob ? body : null;
   if (body !== undefined) headers['Content-Type'] = file ? file.type || 'application/octet-stream' : 'application/json';
@@ -75,12 +87,12 @@ export function refreshSession(): Promise<boolean> {
 }
 
 /** Authenticated request with one transparent retry after refreshing an expired access token. */
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, extra?: Extra): Promise<T> {
   try {
-    return await raw<T>(method, path, body);
+    return await raw<T>(method, path, body, extra);
   } catch (e) {
     if (e instanceof ApiError && e.status === 401 && accessToken && (await refreshSession())) {
-      return raw<T>(method, path, body);
+      return raw<T>(method, path, body, extra);
     }
     throw e;
   }
@@ -88,7 +100,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  post: <T>(path: string, body?: unknown, extra?: Extra) => request<T>('POST', path, body ?? {}, extra),
   patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
   del: <T = void>(path: string) => request<T>('DELETE', path),

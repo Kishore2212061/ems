@@ -27,6 +27,7 @@ export const PERMISSIONS = [
   'local_event.cancel',
   // registrations / payments / check-in / refunds / reports (Modules 4–9)
   'registration.read',
+  'registration.manage',
   'order.read',
   'order.collect_offline',
   'refund.approve',
@@ -55,6 +56,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> =
     'local_event.publish',
     'local_event.cancel',
     'registration.read',
+    'registration.manage',
     'checkin.manual',
     'user.read',
     'user.invite',

@@ -13,7 +13,9 @@ import { useAuth } from '@/store/auth';
 
 const STATUSES: EventStatus[] = ['DRAFT', 'PUBLISHED', 'SUSPENDED', 'COMPLETED', 'CANCELLED'];
 
-const columns: Column<EventCard>[] = [
+type Row = EventCard & { taken: number };
+
+const columns: Column<Row>[] = [
   {
     key: 'name',
     header: 'Event',
@@ -39,9 +41,9 @@ const columns: Column<EventCard>[] = [
   { key: 'when', header: 'When', render: (e) => <span className="whitespace-nowrap text-fg-2">{e.startsAt ? fmtWhen(e.startsAt, null) : 'Not scheduled'}</span> },
   {
     key: 'seats',
-    header: 'Seats',
+    header: 'Registered',
     hideOnMobile: true,
-    render: (e) => <span className="whitespace-nowrap tabular-nums text-fg-2">{e.seatsTotal == null ? 'No limit' : `${e.seatsTotal - (e.seatsLeft ?? 0)} / ${e.seatsTotal}`}</span>,
+    render: (e) => <span className="whitespace-nowrap tabular-nums text-fg-2">{e.seatsTotal == null ? e.taken : `${e.taken} / ${e.seatsTotal}`}</span>,
   },
   { key: 'price', header: 'Entry', hideOnMobile: true, render: (e) => <span className="whitespace-nowrap text-fg-2">{priceLabel(e.pricing, e.participation)}</span> },
   {

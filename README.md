@@ -12,7 +12,7 @@ Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.m
 | 1.5 | Foundations: tests (104), permissions, audit log, job queue, shared UI, CI | ✅ |
 | 2 | Fests, departments, people & roles, invites, profile/security, admin console | ✅ |
 | 3 | Department events: catalogue, search, authoring, Tech Fest '25 seed (123 events) | ✅ |
-| 4 | Registrations, teams & seat holds | ⏳ |
+| 4 | Registrations: day-wise schedule, teams, no time clashes, seat holds, organiser view | ✅ |
 
 ## Architecture (Module 1)
 
@@ -69,11 +69,11 @@ cd backend && npm run build && npm run seed:live
 ### Tests
 
 ```bash
-cd backend && npm test      # 156 e2e/unit tests; uses a local mongod if installed, else downloads one
+cd backend && npm test      # 177 e2e/unit tests; uses a local mongod if installed, else downloads one
 ```
 
 ```bash
-cd frontend && npm test && npm run build && npm run check:bundle   # 52 tests + gzip budget gate
+cd frontend && npm test && npm run build && npm run check:bundle   # 66 tests + gzip budget gate
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.

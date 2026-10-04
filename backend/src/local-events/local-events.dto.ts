@@ -152,6 +152,11 @@ export const PublicEventQuery = z.object({
     .optional()
     .transform((v) => !!v),
   q: z.string().trim().max(60).optional(),
+  /** One fest day (YYYY-MM-DD, college time). Ignored while searching: a search covers every day. */
+  day: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+    .optional(),
   cursor: z
     .string()
     .regex(/^\d{1,15}\.[a-f\d]{24}$/i, 'Invalid cursor')

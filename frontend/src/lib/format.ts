@@ -32,6 +32,28 @@ export function fmtWhen(start?: string | null, end?: string | null) {
   return weekday.format(s) === weekday.format(e) ? `${weekday.format(s)} · ${time(s)} – ${time(e)}` : `${weekday.format(s)} ${time(s)} – ${weekday.format(e)} ${time(e)}`;
 }
 
+const wd = new Intl.DateTimeFormat('en-IN', { weekday: 'short', timeZone: TZ });
+
+/** "Fri, 12 Mar" for a college-time calendar day ("2027-03-12"). */
+export const fmtDay = (day: string) => weekday.format(new Date(`${day}T12:00:00+05:30`));
+/** "9:30 AM" */
+export const fmtTime = (iso: string) => time(new Date(iso));
+
+/** For lists already grouped by day: "9:30 AM – 12:30 PM", "9:30 AM", across days "9:00 AM – Sat 5:00 PM". */
+export function fmtTimeRange(start?: string | null, end?: string | null) {
+  if (!start) return 'Time TBA';
+  const s = new Date(start);
+  if (!end) return time(s);
+  const e = new Date(end);
+  return weekday.format(s) === weekday.format(e) ? `${time(s)} – ${time(e)}` : `${time(s)} – ${wd.format(e)} ${time(e)}`;
+}
+
+/** "9:41" left of a countdown. */
+export const fmtCountdown = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
 export function timeAgo(iso: string) {
   const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60) return 'just now';

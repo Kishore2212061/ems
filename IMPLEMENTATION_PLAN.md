@@ -461,6 +461,29 @@ Also `local_event_templates`: reusable blueprints (copy fields on create).
 
 **Goal:** a participant picks an event, enters self/team details and gets a **10-minute seat hold**, without overbooking under concurrency. No Redis.
 
+> ### ✅ Status: DONE (2026-10-04)
+> | Area | Result |
+> |---|---|
+> | Backend | `registrations` (team embedded), create with Idempotency-Key, my list / detail, leader cancel, organiser list (status tabs, counts, search by code or exact email) and cancel with reason. Free and pay-at-desk entries confirm at once (desk ones show the amount due); online-pay entries hold the seat for 10 min; a sweeper (every 30 s) and a lazy release on "full" give expired holds back. **Time-clash rule:** one active registration per person per time window, teammates included. Catalogue: `?day=` filter + per-day counts (college time). Emails: confirmation to the leader, "added to a team" to teammates, cancellation notices (all via the job queue, inside the transaction). |
+> | Frontend | Fest page is now a **schedule**: sticky day tabs ("Day 1 · Fri, 12 Mar · 67"), events grouped by start time, cards marked *Registered* / *Payment pending* / *Clashes with X*, slot headings say "You're at X". Event page: register sheet (bottom sheet on phones; leader prefilled, teammates added/removed within the team size, payment choice, live total), clash panel, "log in to register". My registrations (Upcoming by day · Past · Cancelled), registration page (code, hold countdown, team, cancel), real dashboard schedule + stats. Admin: event **Registrations** page (stat tiles, tabs, search, detail dialog with phones, cancel with reason), "Registered" column on the fest's events table. |
+> | Tests | Backend **177** (+21: solo/team/duplicates, one place per event, clashes incl. teammates and the 2 h default, concurrent overlapping bookings, time moves + cancelled events, desk/online/both pricing, hold expiry (sweeper + lazy), **50 people racing for 1 seat → exactly 1**, double click with one key, cancel rules, windows, organiser scope, day facet at the IST midnight edge, per-person rate limit, index plans). Frontend **66** (+14: schedule grouping/clash maths, day tabs + slots + marks, register sheet sizes/validation/same key on retry/server field errors/payment choice). |
+> | Bundle | Initial JS **77.1 KB** gz (+0.2), CSS 14.5 / 15 KB. Register sheet 3.3 KB (budget 6, lazy on first tap, prefetched on hover), My registrations ≈ 3.4 KB (budget 7), fest page incl. schedule 4.5 KB (budget 8), organiser page 3.2 KB. |
+> | Verified in the browser | Headless Chrome on an isolated stack with the live '27 data: schedule tabs and slots → team registration (teammate signs in and sees it, can't cancel) → catalogue marks (26 clashing cards) → clash panel → pay-at-desk entry → online entry with countdown → My registrations → organiser page + dialog. 0 px horizontal overflow at 390 and 320 px on every new page. |
+>
+> **Decisions (deviations from the original plan)**
+> - **Fees are per event** (decided 2026-10-04), not fest passes.
+> - **No double booking in time.** Windows are half-open, so back-to-back events (ends 11:30 / starts 11:30) are fine. Events with only a start time count as **2 hours** (about half the catalogue; the fest's slots are ~2 h apart). The window is copied onto each registration and follows the event when its time changes; a cancelled event frees its registrants' slot. Note: the **Ideathon runs Fri 9:00 – Sat 5:00**, so its teams can't book anything else; shorten its time if that's not intended.
+> - **One collection, team embedded** (no `registration_members`/`seat_holds`): the registration *is* the hold (`hold_expires_at`). A partial unique index `{local_event_id, members.email}` (active only) guards "one place per event" across teams.
+> - **Seat + clash in one transaction** with a per-person lock document (`registration_locks`): two bookings involving the same person can't commit side by side, so overlapping events requested at the same instant → exactly one wins (tested).
+> - **Teammates are identified by email** (emails are verified at first login), so no claim tokens: they see the registration as soon as they sign in. Only the leader can cancel.
+> - **Seats on team events count teams** (as the event form already said), one per registration.
+> - **Pay at the desk = confirmed now, amount due**; collecting it is Module 5/7. Online payment itself (Razorpay) is Module 5: until then the hold page shows the countdown and a disabled Pay button.
+> - **Rate limits per person**: signed-in requests are bucketed by the (signature-checked) token subject, so a campus behind one NAT IP isn't throttled as one user. Found while testing: the old tracker ran before the JWT guard and fell back to the IP.
+>
+> **Bugs found & fixed while building Module 4**
+> 1. *Per-IP throttling of signed-in users* (above): one student hitting the limit would have blocked everyone on the same network.
+> 2. *Success screen vanished after registering*: refreshing "my registrations" swapped the event page's button for "You're registered" and unmounted the sheet. The sheet now lives outside that area (found by the browser walkthrough).
+
 ### 5.1 Seat-hold design (MongoDB only)
 ```
 Register click

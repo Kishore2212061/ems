@@ -122,7 +122,10 @@ describe('public catalogue', () => {
     expect(times).toEqual([...times].sort());
 
     const count = (key: string) => SEED.events.reduce((m: Record<string, number>, e: any) => (e[key] ? ((m[e[key]] = (m[e[key]] ?? 0) + 1), m) : m), {});
-    expect(facets).toEqual({ total: 123, departments: count('department'), categories: count('category'), paid: 0 });
+    // Seed times carry +05:30, so their first 10 characters are the college-time day.
+    const days = Object.entries(SEED.events.reduce((m: Record<string, number>, e: any) => ((m[e.startsAt.slice(0, 10)] = (m[e.startsAt.slice(0, 10)] ?? 0) + 1), m), {})).map(([day, n]) => ({ day, n }));
+    expect(days).toHaveLength(2);
+    expect(facets).toEqual({ total: 123, departments: count('department'), categories: count('category'), paid: 0, days });
   });
 
   it('list cards are small: no description, rules or people', async () => {

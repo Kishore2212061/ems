@@ -52,3 +52,64 @@ export function inviteEmail(p: { inviter: string; role: string; scopeLabel: stri
     text: `${p.inviter} invited you to join NEC Events as ${what}.\n\nAccept: ${p.link}\n\nThe link expires in ${p.ttlHours} hours.`,
   };
 }
+
+const p = (html: string) => `<p style="margin:0 0 16px;line-height:1.5;color:#374151">${html}</p>`;
+const button = (href: string, label: string) =>
+  `<p style="margin:0 0 20px"><a href="${esc(href)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px">${esc(label)}</a></p>`;
+function facts(rows: [string, string][]) {
+  const tr = rows
+    .map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#6b7280;font-size:13px;white-space:nowrap;vertical-align:top">${esc(k)}</td><td style="padding:6px 0;font-size:14px;font-weight:600">${esc(v)}</td></tr>`)
+    .join('');
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-top:1px solid #f3f4f6;width:100%">${tr}</table>`;
+}
+
+export interface RegistrationMailInput {
+  /** Recipient's name. */
+  name: string;
+  event: string;
+  fest: string;
+  when: string;
+  where: string;
+  code: string;
+  team: string | null;
+  members: string[];
+  /** "Free", "Pay ₹100 at the registration desk", "₹200 paid online". */
+  payment: string;
+  link: string;
+  /** Set when someone else (the team leader) registered the recipient. */
+  addedBy?: string;
+}
+
+export function registrationEmail(r: RegistrationMailInput) {
+  const intro = r.addedBy
+    ? `Hi ${esc(r.name)}, <strong>${esc(r.addedBy)}</strong> registered you${r.team ? ` in team <strong>${esc(r.team)}</strong>` : ''} for <strong>${esc(r.event)}</strong> at ${esc(r.fest)}.`
+    : `Hi ${esc(r.name)}, you're registered for <strong>${esc(r.event)}</strong> at ${esc(r.fest)}.`;
+  const rows: [string, string][] = [
+    ['Code', r.code],
+    ['When', r.when],
+    ['Where', r.where],
+    ...(r.members.length > 1 ? [['Team', `${r.team ? `${r.team}: ` : ''}${r.members.join(', ')}`] as [string, string]] : []),
+    ['Entry', r.payment],
+  ];
+  const next = r.addedBy
+    ? 'Sign in (or create an account) with this email address to see it in your registrations. If this is a mistake, contact the team leader or the event coordinators.'
+    : 'Keep the code handy: you will need it at the registration desk.';
+  const html = layout(r.addedBy ? 'You have been added to a team' : "You're registered", `${p(intro)}${facts(rows)}${button(r.link, 'View registration')}<p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5">${esc(next)}</p>`);
+  return {
+    subject: `${r.addedBy ? 'Added to a team' : 'Registered'}: ${r.event} (${r.code})`,
+    html,
+    text: `${r.addedBy ? `${r.addedBy} registered you${r.team ? ` in team ${r.team}` : ''} for ${r.event} at ${r.fest}.` : `You're registered for ${r.event} at ${r.fest}.`}\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nView: ${r.link}\n\n${next}`,
+  };
+}
+
+export function registrationCancelledEmail(r: { name: string; event: string; code: string; by: string; reason: string | null; link: string }) {
+  const html = layout(
+    'Registration cancelled',
+    `${p(`Hi ${esc(r.name)}, the registration <strong>${esc(r.code)}</strong> for <strong>${esc(r.event)}</strong> was cancelled by ${esc(r.by)}${r.reason ? `: ${esc(r.reason)}` : '.'}`)}${button(r.link, 'Browse events')}`,
+  );
+  return {
+    subject: `Cancelled: ${r.event} (${r.code})`,
+    html,
+    text: `The registration ${r.code} for ${r.event} was cancelled by ${r.by}${r.reason ? `: ${r.reason}` : '.'}\n\nBrowse events: ${r.link}`,
+  };
+}

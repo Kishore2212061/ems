@@ -6,6 +6,7 @@ export function useMyNav() {
   return [
     { href: home, label: home === '/dashboard' ? 'Dashboard' : HOME_LABEL[home] },
     { href: '/', label: 'Fests' },
+    { href: '/my/registrations', label: 'Registrations' },
     { href: '/my/profile', label: 'Profile' },
     { href: '/my/security', label: 'Security' },
   ];

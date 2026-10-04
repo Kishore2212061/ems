@@ -13,6 +13,7 @@ const Fests = lazy(() => import('./Fests'));
 const FestNew = lazy(() => import('./FestNew'));
 const FestDetail = lazy(() => import('./FestDetail'));
 const EventStudio = lazy(() => import('./EventStudio'));
+const EventRegistrations = lazy(() => import('./EventRegistrations'));
 const Departments = lazy(() => import('./Departments'));
 const Users = lazy(() => import('./Users'));
 const Invites = lazy(() => import('./Invites'));
@@ -127,6 +128,7 @@ export default function AdminLayout() {
             <Route path="/admin" component={Overview} />
             <Route path="/admin/events" component={Fests} />
             <Route path="/admin/events/new" component={FestNew} />
+            <Route path="/admin/events/:festId/local/:eventId/registrations" component={EventRegistrations} />
             <Route path="/admin/events/:festId/local/:eventId" component={EventStudio} />
             <Route path="/admin/events/:id" component={FestDetail} />
             <Route path="/admin/departments" component={Departments} />

@@ -20,6 +20,8 @@ const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Profile = lazy(() => import('@/pages/my/Profile'));
 const Security = lazy(() => import('@/pages/my/Security'));
+const MyRegistrations = lazy(() => import('@/pages/my/Registrations'));
+const RegistrationDetail = lazy(() => import('@/pages/my/RegistrationDetail'));
 // Admin console (its own chunk group — never downloaded by participants)
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'));
 // Scanner
@@ -92,6 +94,9 @@ const R = {
   dashboard: participant(Dashboard),
   profile: authed(Profile),
   security: authed(Security),
+  // Any signed-in context: staff are participants too (registration links in emails must just work).
+  registrations: authed(MyRegistrations),
+  registration: authed(RegistrationDetail),
   admin: authed(AdminLayout),
   scan: authed(ScanHome),
 };
@@ -120,6 +125,8 @@ export default function App() {
         <Route path="/dashboard" component={R.dashboard} />
         <Route path="/my/profile" component={R.profile} />
         <Route path="/my/security" component={R.security} />
+        <Route path="/my/registrations" component={R.registrations} />
+        <Route path="/my/registrations/:code" component={R.registration} />
         <Route path="/admin/*?" component={R.admin} />
         <Route path="/scan" component={R.scan} />
 

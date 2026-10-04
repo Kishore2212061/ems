@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { Link } from 'wouter';
 import { CATEGORY_LABEL, EVENT_STATUS_LABEL, EVENT_STATUS_TONE, payLabel, priceLabel, teamLabel, type EventCard } from '@/lib/ems-api';
-import { fmtWhen } from '@/lib/format';
+import { fmtTimeRange } from '@/lib/format';
 import { cardImage } from '@/lib/media';
+import type { Mark } from '@/lib/schedule';
 import { CardIcon, CATEGORY_ICON, ClockIcon, GlobeIcon } from './event-icons';
-import { MapPinIcon, UsersIcon } from './icons';
+import { AlertIcon, CheckIcon, MapPinIcon, UsersIcon } from './icons';
 import { Badge } from './layout';
 import { cx } from './ui';
 
@@ -33,11 +34,34 @@ const Fact = ({ icon: I, children }: { icon: typeof ClockIcon; children: ReactNo
   </div>
 );
 
+/** Where I stand with this event: in it, paying for it, or busy elsewhere at that time. */
+function MarkPill({ mark }: { mark: Mark }) {
+  if (mark.kind === 'clash') {
+    return (
+      <span className="absolute left-3 top-3 inline-flex max-w-[calc(100%-6.5rem)] items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-xs font-semibold text-white">
+        <AlertIcon className="size-3.5 shrink-0 text-amber-300" />
+        <span className="truncate">Clashes with {mark.reg.event?.name ?? 'your event'}</span>
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cx(
+        'absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold',
+        mark.kind === 'registered' ? 'bg-emerald-600 text-white' : 'bg-amber-400 text-amber-950',
+      )}
+    >
+      {mark.kind === 'registered' && <CheckIcon className="size-3.5" />}
+      {mark.kind === 'registered' ? 'Registered' : 'Payment pending'}
+    </span>
+  );
+}
+
 /**
  * Catalogue card. The picture is the 640×400 card variant of the poster (~20 KB), lazy-loaded in a
  * fixed 16:10 box so nothing shifts while it arrives; events without a poster get a quiet placeholder.
  */
-export function EventTile({ e, href }: { e: EventCard; href: string }) {
+export function EventTile({ e, href, mark }: { e: EventCard; href: string; mark?: Mark | null }) {
   const I = CATEGORY_ICON[e.category];
   const img = cardImage(e.bannerUrl);
   return (
@@ -62,6 +86,7 @@ export function EventTile({ e, href }: { e: EventCard; href: string }) {
         >
           {priceLabel(e.pricing, e.participation).replace(/ per (team|member)$/, '')}
         </span>
+        {mark && <MarkPill mark={mark} />}
       </div>
 
       <div className="flex flex-1 flex-col p-4 sm:p-5">
@@ -76,7 +101,8 @@ export function EventTile({ e, href }: { e: EventCard; href: string }) {
         {e.tagline && <p className="mt-0.5 line-clamp-1 text-sm text-muted">{e.tagline}</p>}
 
         <div className="mt-3 space-y-1.5 text-sm text-fg-2">
-          <Fact icon={ClockIcon}>{fmtWhen(e.startsAt, e.endsAt)}</Fact>
+          {/* The day is the tab/section the card sits in, so only the time is shown. */}
+          <Fact icon={ClockIcon}>{fmtTimeRange(e.startsAt, e.endsAt)}</Fact>
           <Fact icon={!e.venue && e.online ? GlobeIcon : MapPinIcon}>
             {e.venue ?? (e.online ? 'Online' : 'Venue TBA')}
             {e.online && e.venue && <span className="text-subtle"> · also online</span>}

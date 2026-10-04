@@ -2,7 +2,7 @@ import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } f
 import { Link, useLocation, useParams } from 'wouter';
 import { EmptyState, Skeleton } from '@/components/data';
 import { TrashIcon, UploadIcon, XIcon } from '@/components/event-icons';
-import { CalendarIcon, CopyIcon, ExternalIcon, MapPinIcon, PlusIcon } from '@/components/icons';
+import { CalendarIcon, CopyIcon, ExternalIcon, MapPinIcon, PlusIcon, UsersIcon } from '@/components/icons';
 import { Badge, Card, PageHeader } from '@/components/layout';
 import { ConfirmDialog, Dialog } from '@/components/overlay';
 import { toast } from '@/components/toast';
@@ -394,6 +394,12 @@ function Studio({
         actions={
           e && (
             <>
+              {status !== 'DRAFT' && (
+                <Link href={`/admin/events/${fest.id}/local/${e.id}/registrations`} className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-fg">
+                  <UsersIcon className="size-4" /> Registrations
+                  {(e.seatsConfirmed ?? 0) + (e.seatsHeld ?? 0) > 0 && <span className="rounded-full bg-indigo-500/15 px-1.5 text-xs tabular-nums text-indigo-600 dark:text-indigo-300">{(e.seatsConfirmed ?? 0) + (e.seatsHeld ?? 0)}</span>}
+                </Link>
+              )}
               {publicHref && (
                 <a href={publicHref} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-fg">
                   <ExternalIcon className="size-4" /> View

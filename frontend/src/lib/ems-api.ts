@@ -104,6 +104,8 @@ export interface EventFacets {
   departments: Record<string, number>;
   categories: Partial<Record<EventCategory, number>>;
   paid: number;
+  /** Events per fest day (college time), in date order. */
+  days: { day: string; n: number }[];
 }
 
 export interface EventPage {
@@ -117,7 +119,79 @@ export interface EventQuery {
   category?: EventCategory;
   free?: boolean;
   q?: string;
+  /** YYYY-MM-DD (college time); ignored by the API while searching. */
+  day?: string;
   cursor?: string;
+}
+
+// ── registrations (Module 4) ──
+export type RegistrationStatus = 'PAYMENT_PENDING' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED';
+/** NOT_REQUIRED = free · PENDING = online, not paid yet · DUE = pay at the desk · PAID */
+export type PaymentStatus = 'NOT_REQUIRED' | 'PENDING' | 'DUE' | 'PAID';
+
+export interface RegistrationPayment {
+  mode: 'NONE' | PaymentMode;
+  status: PaymentStatus;
+  amountPaise: number;
+}
+
+export interface Registration {
+  code: string;
+  status: RegistrationStatus;
+  role: 'LEADER' | 'MEMBER';
+  eventId: string;
+  /** The window used for clash checks: an event without an end time counts as 2 hours. */
+  startsAt: string;
+  endsAt: string;
+  teamName: string | null;
+  members: { name: string; email: string; leader: boolean }[];
+  payment: RegistrationPayment;
+  holdExpiresAt: string | null;
+  cancelReason: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  event: {
+    id: string;
+    slug: string;
+    name: string;
+    category: EventCategory;
+    startsAt: string | null;
+    endsAt: string | null;
+    venue: string | null;
+    online: boolean;
+    status: EventStatus;
+    departmentCode: string | null;
+    bannerUrl: string | null;
+  } | null;
+  fest: { slug: string; name: string; status: FestStatus } | null;
+}
+
+export interface RegistrationInput {
+  eventId: string;
+  teamName?: string | null;
+  teammates: { name: string; email: string }[];
+  paymentMode?: PaymentMode;
+}
+
+export interface AdminRegistration {
+  id: string;
+  code: string;
+  status: RegistrationStatus;
+  eventId: string;
+  teamName: string | null;
+  members: { name: string; email: string; phone: string | null; college: string | null; leader: boolean }[];
+  payment: RegistrationPayment;
+  holdExpiresAt: string | null;
+  cancelReason: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminRegistrationPage extends Page<AdminRegistration> {
+  counts?: Partial<Record<RegistrationStatus, number>>;
+  people?: number;
+  seats?: { total: number | null; confirmed: number; held: number };
+  hint?: string;
 }
 
 export type EventInput = Partial<{
@@ -217,12 +291,12 @@ export const publicApi = {
   fest: (slug: string) => api.get<FestDetail>(`/global-events/${encodeURIComponent(slug)}`),
   departments: () => api.get<Department[]>('/departments'),
   events: (fest: string, q: EventQuery) =>
-    api.get<EventPage>(`/global-events/${encodeURIComponent(fest)}/events${qs({ dept: q.dept, category: q.category, free: q.free ? 1 : undefined, q: q.q, cursor: q.cursor })}`),
+    api.get<EventPage>(`/global-events/${encodeURIComponent(fest)}/events${qs({ dept: q.dept, category: q.category, free: q.free ? 1 : undefined, q: q.q, day: q.day, cursor: q.cursor })}`),
   event: (fest: string, slug: string) => api.get<EventDetail>(`/global-events/${encodeURIComponent(fest)}/events/${encodeURIComponent(slug)}`),
 };
 
 export const eventApi = {
-  list: (festId: string) => api.get<{ items: (EventCard & { updatedAt: string })[]; counts: Partial<Record<EventStatus, number>> }>(`/admin/global-events/${festId}/events`),
+  list: (festId: string) => api.get<{ items: (EventCard & { updatedAt: string; taken: number })[]; counts: Partial<Record<EventStatus, number>> }>(`/admin/global-events/${festId}/events`),
   get: (id: string) => api.get<EventDetail>(`/admin/local-events/${id}`),
   create: (festId: string, body: EventInput) => api.post<EventDetail>(`/admin/global-events/${festId}/events`, body),
   update: (id: string, body: EventInput & { version: number }) => api.patch<EventDetail>(`/admin/local-events/${id}`, body),
@@ -233,6 +307,20 @@ export const eventApi = {
   complete: (id: string) => api.post<EventDetail>(`/admin/local-events/${id}/complete`),
   cancel: (id: string, reason: string) => api.post<EventDetail>(`/admin/local-events/${id}/cancel`, { reason }),
   clone: (id: string) => api.post<EventDetail>(`/admin/local-events/${id}/clone`),
+};
+
+export const regApi = {
+  /** `key` makes retries safe: the same key always returns the first result. */
+  create: (body: RegistrationInput, key: string) => api.post<Registration>('/registrations', body, { headers: { 'Idempotency-Key': key } }),
+  mine: () => api.get<{ items: Registration[] }>('/registrations/my'),
+  get: (code: string) => api.get<Registration>(`/registrations/${encodeURIComponent(code)}`),
+  cancel: (code: string, reason?: string) => api.post<Registration>(`/registrations/${encodeURIComponent(code)}/cancel`, reason ? { reason } : {}),
+};
+
+export const adminRegApi = {
+  list: (eventId: string, q: { status?: RegistrationStatus; q?: string; cursor?: string } = {}) =>
+    api.get<AdminRegistrationPage>(`/admin/local-events/${eventId}/registrations${qs(q)}`),
+  cancel: (code: string, reason: string) => api.post<AdminRegistration>(`/admin/registrations/${encodeURIComponent(code)}/cancel`, { reason }),
 };
 
 export const festApi = {
@@ -356,7 +444,7 @@ export const EVENT_STATUS_TONE = {
 export const teamLabel = (e: Pick<EventCard, 'participation' | 'teamMin' | 'teamMax'>) =>
   e.participation === 'INDIVIDUAL' ? 'Solo' : e.teamMin === e.teamMax ? `Teams of ${e.teamMax}` : `Teams of ${e.teamMin}–${e.teamMax}`;
 
-const rupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+export const rupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 /** "Pay online", "Pay at the desk", "Pay online or at the desk" */
 export const payLabel = (p: Pricing) =>
   p.type === 'FREE' ? null : p.modes.length > 1 ? 'Pay online or at the desk' : p.modes[0] === 'OFFLINE' ? 'Pay at the desk' : 'Pay online';

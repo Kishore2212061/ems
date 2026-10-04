@@ -1,9 +1,11 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { publicApi, type EventCard, type EventPage, type FestDetail } from '@/lib/ems-api';
+import { publicApi, regApi, type EventCard, type EventPage, type FestDetail, type Registration } from '@/lib/ems-api';
+import { clearQueryCache } from '@/lib/query';
+import { useAuth } from '@/store/auth';
 import { EventCatalog } from './EventCatalog';
 
 let n = 0;
@@ -53,10 +55,16 @@ const card = (name: string, over: Partial<EventCard> = {}): EventCard => ({
   ...over,
 });
 
-const page = (items: EventCard[]): EventPage => ({
+const page = (items: EventCard[], days: { day: string; n: number }[] = []): EventPage => ({
   items,
   nextCursor: null,
-  facets: { total: 3, departments: { CSE: 2, IT: 1 }, categories: { TECHNICAL: 2, WORKSHOP: 1 }, paid: 0 },
+  facets: { total: 3, departments: { CSE: 2, IT: 1 }, categories: { TECHNICAL: 2, WORKSHOP: 1 }, paid: 0, days },
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  clearQueryCache();
+  useAuth.getState().setUser(null);
 });
 
 function mount(f = fest(), search = '') {
@@ -119,5 +127,78 @@ describe('EventCatalog', () => {
     expect(await screen.findByText('No events match')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(loc.history.at(-1)).not.toContain('cat=');
+  });
+});
+
+describe('EventCatalog as a schedule', () => {
+  const twoDays = (): FestDetail => ({ ...fest(), startsAt: '2027-03-12T09:00:00+05:30', endsAt: '2027-03-13T17:00:00+05:30' });
+  const DAYS = [
+    { day: '2027-03-12', n: 3 },
+    { day: '2027-03-13', n: 1 },
+  ];
+  const ist = (d: string, t: string) => new Date(`${d}T${t}:00+05:30`).toISOString();
+
+  it("opens on the fest's first day (no extra request), groups by start time, and switches days", async () => {
+    const spy = vi.spyOn(publicApi, 'events').mockImplementation(async (_f, q) =>
+      q.day === '2027-03-13'
+        ? page([card('Robo Race', { startsAt: ist('2027-03-13', '10:00') })], DAYS)
+        : page([card('Blind Coding', { startsAt: ist('2027-03-12', '09:30') }), card('Paper Talk', { startsAt: ist('2027-03-12', '09:30') }), card('Quiz', { startsAt: ist('2027-03-12', '11:30') })], DAYS),
+    );
+    const loc = mount(twoDays());
+    expect(await screen.findByText('Blind Coding')).toBeTruthy();
+    expect(spy.mock.calls[0][1]).toMatchObject({ day: '2027-03-12' }); // the very first request is already for day 1
+
+    const slot930 = screen.getByRole('region', { name: 'Fri, 12 Mar, 9:30 AM' });
+    expect(slot930.textContent).toContain('2 events');
+    expect(slot930.textContent).toContain('Paper Talk');
+    expect(screen.getByRole('region', { name: 'Fri, 12 Mar, 11:30 AM' }).textContent).toContain('Quiz');
+
+    const day2 = screen.getByRole('tab', { name: /Day 2/ });
+    expect(day2.textContent).toContain('Sat, 13 Mar');
+    await userEvent.click(day2);
+    expect(await screen.findByText('Robo Race')).toBeTruthy();
+    expect(loc.history.at(-1)).toContain('day=2027-03-13');
+    expect(screen.getByRole('tab', { name: /Day 2/ }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('a search covers every day', async () => {
+    const spy = vi.spyOn(publicApi, 'events').mockResolvedValue(page([card('Blind Coding', { startsAt: ist('2027-03-12', '09:30') })], DAYS));
+    mount(twoDays());
+    await screen.findByText('Blind Coding');
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search events' }), 'robo');
+    await waitFor(() => expect(spy).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ q: 'robo', day: undefined })), { timeout: 1500 });
+  });
+
+  it('marks what I registered for, and what clashes with it', async () => {
+    useAuth.getState().setUser({ id: 'u1', email: 'me@x.io', fullName: 'Me', phone: null, college: null, status: 'ACTIVE', emailVerified: true, roles: [], createdAt: '2026-01-01' });
+    const reg = {
+      code: 'REG-ABCDEF',
+      status: 'CONFIRMED',
+      role: 'LEADER',
+      eventId: 'Blind Coding',
+      startsAt: ist('2027-03-12', '10:00'),
+      endsAt: ist('2027-03-12', '12:00'),
+      payment: { mode: 'NONE', status: 'NOT_REQUIRED', amountPaise: 0 },
+      holdExpiresAt: null,
+      event: { name: 'Blind Coding', status: 'PUBLISHED' },
+    } as unknown as Registration;
+    vi.spyOn(regApi, 'mine').mockResolvedValue({ items: [reg] });
+    vi.spyOn(publicApi, 'events').mockResolvedValue(
+      page(
+        [
+          card('Blind Coding', { startsAt: ist('2027-03-12', '10:00'), endsAt: ist('2027-03-12', '12:00') }),
+          card('Code Relay', { startsAt: ist('2027-03-12', '11:00') }),
+          card('Quiz', { startsAt: ist('2027-03-12', '12:00') }), // starts as Blind Coding ends: fine
+        ],
+        DAYS,
+      ),
+    );
+    mount(twoDays());
+    await screen.findByText('Registered');
+    const tile = (name: string) => screen.getByText(name).closest('a')!;
+    expect(tile('Blind Coding').textContent).toContain('Registered');
+    expect(tile('Code Relay').textContent).toContain('Clashes with Blind Coding');
+    expect(tile('Quiz').textContent).not.toMatch(/Registered|Clashes/);
+    expect(screen.getByRole('region', { name: 'Fri, 12 Mar, 11:00 AM' }).textContent).toContain("You're at Blind Coding");
   });
 });

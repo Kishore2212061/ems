@@ -8,6 +8,8 @@ import { slugify } from '../common/util';
 import { GLOBAL_EVENT_MODEL, GlobalEvent, PUBLIC_STATUSES } from '../global-events/global-event.schema';
 import { MediaService } from '../media/media.service';
 import { RbacService } from '../rbac/rbac.service';
+import { REGISTRATION_MODEL, type Registration } from '../registrations/registration.schema';
+import { effectiveEnd, istDayRange } from '../registrations/schedule';
 import { eventRuleErrors, type CreateEventDto, type PublicEventQuery, type UpdateEventDto } from './local-events.dto';
 import {
   ADMIN_ROW_FIELDS,
@@ -69,6 +71,7 @@ export class LocalEventsService {
   constructor(
     @InjectModel(LOCAL_EVENT_MODEL) private readonly events: Model<LocalEvent>,
     @InjectModel(GLOBAL_EVENT_MODEL) private readonly fests: Model<GlobalEvent>,
+    @InjectModel(REGISTRATION_MODEL) private readonly regs: Model<Registration>,
     private readonly rbac: RbacService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
@@ -111,6 +114,11 @@ export class LocalEventsService {
       return { items: rows.map(toEventCard), nextCursor: null, ...(facets && { facets: await facets }) };
     }
 
+    if (q.day) {
+      // One fest day: a range on starts_at, which every list index already has right after its equality fields.
+      const { start, end } = istDayRange(q.day);
+      filter.starts_at = { $gte: start, $lt: end };
+    }
     if (q.cursor) {
       const [ms, id] = q.cursor.split('.');
       const at = new Date(Number(ms));
@@ -126,13 +134,20 @@ export class LocalEventsService {
   }
 
   private async facets(base: Record<string, unknown>) {
-    const [r] = await this.events.aggregate<{ departments: { _id: string | null; n: number }[]; categories: { _id: string; n: number }[]; paid: { n: number }[] }>([
+    const [r] = await this.events.aggregate<{
+      departments: { _id: string | null; n: number }[];
+      categories: { _id: string; n: number }[];
+      paid: { n: number }[];
+      days: { _id: string | null; n: number }[];
+    }>([
       { $match: base },
       {
         $facet: {
           departments: [{ $group: { _id: '$department_code', n: { $sum: 1 } } }],
           categories: [{ $group: { _id: '$category', n: { $sum: 1 } } }],
           paid: [{ $match: { 'pricing.type': 'PAID' } }, { $count: 'n' }],
+          // Day tabs: events per calendar day in college time.
+          days: [{ $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$starts_at', timezone: 'Asia/Kolkata' } }, n: { $sum: 1 } } }, { $sort: { _id: 1 } }],
         },
       },
     ]);
@@ -141,6 +156,7 @@ export class LocalEventsService {
       departments: Object.fromEntries(r.departments.filter((d) => d._id).map((d) => [d._id, d.n])) as Record<string, number>,
       categories: Object.fromEntries(r.categories.map((c) => [c._id, c.n])) as Record<string, number>,
       paid: r.paid[0]?.n ?? 0,
+      days: r.days.filter((d) => d._id).map((d) => ({ day: d._id!, n: d.n })),
     };
   }
 
@@ -166,7 +182,8 @@ export class LocalEventsService {
       this.events.aggregate<{ _id: EventStatus; n: number }>([{ $match: all }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
     ]);
     return {
-      items: rows.map((e) => ({ ...toEventCard(e), updatedAt: e.updated_at })),
+      // `taken` = registrations holding a seat (confirmed + pending payment), also for events without a cap.
+      items: rows.map((e) => ({ ...toEventCard(e), updatedAt: e.updated_at, taken: (e.seats_confirmed ?? 0) + (e.seats_held ?? 0) })),
       counts: Object.fromEntries(counts.map((c) => [c._id, c.n])) as Partial<Record<EventStatus, number>>,
     };
   }
@@ -283,6 +300,11 @@ export class LocalEventsService {
       }
       throw Errors.conflict('STALE_VERSION', 'Someone else saved this event in the meantime. Reload to see the latest version.');
     }
+    const ms = (d: Date | null) => d?.getTime() ?? null;
+    if (after.starts_at && (ms(after.starts_at) !== ms(cur.starts_at) || ms(after.ends_at) !== ms(cur.ends_at))) {
+      // Registrants' schedules follow the event, so clash checks use the new time from now on.
+      await this.regs.updateMany({ local_event_id: id, active: true }, { $set: { starts_at: after.starts_at, ends_at: effectiveEnd(after.starts_at, after.ends_at) } });
+    }
     await this.audit.record({
       actorId: user.id,
       action: 'local_event.updated',
@@ -334,9 +356,19 @@ export class LocalEventsService {
     return this.transition(id, ctx, 'local_event.publish', ['SUSPENDED'], 'PUBLISHED', { status_reason: null }, (e) => this.openFest(e.global_event_id).then(() => {}));
   }
 
-  /** Registrations are refunded by the refunds module (Module 6) when it lands. */
-  cancel(id: Types.ObjectId, reason: string, ctx: Ctx) {
-    return this.transition(id, ctx, 'local_event.cancel', ['DRAFT', 'PUBLISHED', 'SUSPENDED'], 'CANCELLED', { status_reason: reason });
+  /**
+   * Registrants are freed: pending online holds end, and every registration stops blocking the
+   * person's schedule (they can sign up for something else in that slot). Paid entries are
+   * refunded by the refunds module when it lands.
+   */
+  async cancel(id: Types.ObjectId, reason: string, ctx: Ctx) {
+    const out = await this.transition(id, ctx, 'local_event.cancel', ['DRAFT', 'PUBLISHED', 'SUSPENDED'], 'CANCELLED', { status_reason: reason });
+    await this.regs.updateMany(
+      { local_event_id: id, status: 'PAYMENT_PENDING' },
+      { $set: { status: 'CANCELLED', active: false, hold_expires_at: null, cancel_reason: `Event cancelled: ${reason}`, cancelled_at: new Date() } },
+    );
+    await this.regs.updateMany({ local_event_id: id, active: true }, { $set: { active: false } });
+    return out;
   }
 
   complete(id: Types.ObjectId, ctx: Ctx) {

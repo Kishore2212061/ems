@@ -1,6 +1,12 @@
+import { useMemo } from 'react';
+import { Link } from 'wouter';
 import { AppHeader, initials } from '@/components/AppHeader';
-import { CalendarIcon, MailIcon, ShieldIcon, TicketIcon } from '@/components/icons';
+import { Skeleton } from '@/components/data';
+import { CalendarIcon, MailIcon, ShieldIcon, TicketIcon, WalletIcon } from '@/components/icons';
+import { RegistrationRow } from '@/components/RegistrationRow';
+import { useMyRegistrations } from '@/lib/my-registrations';
 import { useMyNav } from '@/lib/nav';
+import { isActive } from '@/lib/schedule';
 import { useAuth } from '@/store/auth';
 
 const greeting = () => {
@@ -12,11 +18,22 @@ export default function Dashboard() {
   const user = useAuth((s) => s.user)!;
   const nav = useMyNav();
   const firstName = user.fullName.split(' ')[0];
+  const { items, loading } = useMyRegistrations();
+
+  const { upcoming, due, past } = useMemo(() => {
+    const now = Date.now();
+    const active = items.filter((r) => isActive(r, now));
+    return {
+      upcoming: active.filter((r) => Date.parse(r.endsAt) > now),
+      due: active.filter((r) => r.payment.status === 'DUE' || r.payment.status === 'PENDING').length,
+      past: active.filter((r) => Date.parse(r.endsAt) <= now).length,
+    };
+  }, [items]);
 
   const stats = [
-    { label: 'Registrations', value: 0, icon: CalendarIcon, tint: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300' },
-    { label: 'Active tickets', value: 0, icon: TicketIcon, tint: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300' },
-    { label: 'Events attended', value: 0, icon: ShieldIcon, tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' },
+    { label: 'Upcoming', value: upcoming.length, icon: CalendarIcon, tint: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300' },
+    { label: 'Payment due', value: due, icon: WalletIcon, tint: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300' },
+    { label: 'Past events', value: past, icon: ShieldIcon, tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' },
   ];
 
   return (
@@ -33,7 +50,9 @@ export default function Dashboard() {
             <p className="text-sm font-medium text-indigo-100">{greeting()},</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{firstName} 👋</h1>
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-indigo-100 sm:text-[15px]">
-              Your NEC Events account is ready. Event registrations open soon — your tickets and QR passes will show up here.
+              {upcoming.length
+                ? `You have ${upcoming.length} event${upcoming.length === 1 ? '' : 's'} coming up. Your schedule is below.`
+                : 'Pick a fest, choose a day and register for one event per time slot. Your schedule shows up here.'}
             </p>
           </div>
         </section>
@@ -57,17 +76,38 @@ export default function Dashboard() {
           {/* Registrations */}
           <section className="rounded-2xl border border-line/80 bg-surface p-5 shadow-sm sm:p-6 lg:col-span-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-fg">My registrations</h2>
+              <h2 className="text-lg font-bold text-fg">Coming up</h2>
+              {items.length > 0 && (
+                <Link href="/my/registrations" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                  View all
+                </Link>
+              )}
             </div>
+            {loading ? (
+              <div className="mt-5 space-y-2.5">
+                <Skeleton className="h-20 rounded-xl" />
+                <Skeleton className="h-20 rounded-xl" />
+              </div>
+            ) : upcoming.length ? (
+              <div className="mt-5 space-y-2.5">
+                {upcoming.slice(0, 5).map((r) => (
+                  <RegistrationRow key={r.code} r={r} showDay />
+                ))}
+              </div>
+            ) : (
             <div className="mt-6 flex flex-col items-center rounded-2xl border-2 border-dashed border-line bg-page/50 px-6 py-14 text-center">
               <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25">
                 <TicketIcon className="size-7" />
               </div>
-              <p className="mt-5 text-base font-bold text-fg">No registrations yet</p>
+              <p className="mt-5 text-base font-bold text-fg">Nothing booked yet</p>
               <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted">
-                When registrations open, browse events across all NEC fests and book your spot in a few taps.
+                Browse the fests, pick your events by day and time, and book your spot in a few taps.
               </p>
+              <Link href="/" className="mt-5 inline-flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500">
+                Browse events
+              </Link>
             </div>
+            )}
           </section>
 
           {/* Profile */}

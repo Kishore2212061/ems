@@ -1,26 +1,126 @@
-import { useState, type ReactNode } from 'react';
-import { Link, useParams } from 'wouter';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
+import { Link, useLocation, useParams } from 'wouter';
 import { AppHeader } from '@/components/AppHeader';
 import { EmptyState, Skeleton } from '@/components/data';
 import { CATEGORY_ICON, ClockIcon, ExpandIcon, GlobeIcon, PhoneIcon } from '@/components/event-icons';
 import { SeatsBar } from '@/components/EventTile';
-import { ArrowLeftIcon, CalendarIcon, MapPinIcon, TicketIcon, UserIcon, UsersIcon } from '@/components/icons';
+import { AlertIcon, ArrowLeftIcon, CalendarIcon, CheckIcon, MapPinIcon, TicketIcon, UserIcon, UsersIcon } from '@/components/icons';
 import { Badge } from '@/components/layout';
 import { Dialog } from '@/components/overlay';
 import { Alert, Button } from '@/components/ui';
 import { CATEGORY_LABEL, EVENT_STATUS_LABEL, EVENT_STATUS_TONE, payLabel, priceLabel, publicApi, teamLabel, type EventDetail } from '@/lib/ems-api';
-import { fmtDateTime, fmtWhen } from '@/lib/format';
+import { fmtDateTime, fmtTimeRange, fmtWhen } from '@/lib/format';
 import { cardImage } from '@/lib/media';
+import { useMyRegistrations } from '@/lib/my-registrations';
 import { useQuery } from '@/lib/query';
+import { markFor } from '@/lib/schedule';
 
-/** Why the Register button is (not) available. Registration itself arrives with Module 4. */
-function registerState(e: EventDetail): { label: string; note?: string } {
+// The sheet (and its form code) downloads on the first tap of Register, never with the page.
+const loadSheet = () => import('./RegisterSheet');
+const RegisterSheet = lazy(loadSheet);
+
+/** Why registering isn't possible right now, or null when it is. */
+function closedState(e: EventDetail): { label: string; note?: string } | null {
   if (e.status === 'CANCELLED') return { label: 'Event cancelled', note: e.statusReason ?? undefined };
   if (e.status === 'COMPLETED' || e.fest?.status === 'COMPLETED') return { label: 'This event has ended' };
   if (e.status === 'SUSPENDED' || e.fest?.status === 'SUSPENDED') return { label: 'Registrations paused', note: e.statusReason ?? undefined };
   if (e.registrationClosesAt && new Date(e.registrationClosesAt) < new Date()) return { label: 'Registrations closed' };
+  if (e.startsAt && new Date(e.startsAt) <= new Date()) return { label: 'Registrations closed' };
+  if (e.registrationOpensAt && new Date(e.registrationOpensAt) > new Date()) return { label: 'Registrations open soon', note: `Opens ${fmtDateTime(e.registrationOpensAt)}` };
   if (e.seatsLeft === 0) return { label: 'Event full' };
-  return { label: 'Registration opens soon', note: e.registrationClosesAt ? `Closes ${fmtDateTime(e.registrationClosesAt)}` : undefined };
+  return null;
+}
+
+/** The action area: registered → view it; busy then → say with what; otherwise register (or log in first). */
+function RegisterAction({ e }: { e: EventDetail }) {
+  const [, navigate] = useLocation();
+  const [open, setOpen] = useState(false);
+  // The sheet lives outside the state-dependent area: registering flips that area to "You're
+  // registered", and the sheet must stay mounted to show its success screen.
+  return (
+    <>
+      <ActionArea e={e} onRegister={() => setOpen(true)} />
+      {open && (
+        <Suspense fallback={null}>
+          <RegisterSheet event={e} open={open} onClose={() => setOpen(false)} onRegistered={(r) => navigate(`/my/registrations/${r.code}`)} />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+function ActionArea({ e, onRegister }: { e: EventDetail; onRegister: () => void }) {
+  const { authed, schedule } = useMyRegistrations();
+  const [location] = useLocation();
+  const mark = markFor(e, schedule);
+
+  if (mark && mark.kind !== 'clash') {
+    const pending = mark.kind === 'pending';
+    return (
+      <div className={`mt-5 rounded-xl border p-4 ${pending ? 'border-amber-500/30 bg-amber-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+        <p className={`flex items-center gap-2 font-semibold ${pending ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
+          {pending ? <AlertIcon className="size-5" /> : <CheckIcon className="size-5" />}
+          {pending ? 'Payment pending' : "You're registered"}
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          Code <span className="font-mono font-semibold text-fg">{mark.reg.code}</span>
+          {mark.reg.role === 'MEMBER' && ' · added by your team leader'}
+        </p>
+        <Link href={`/my/registrations/${mark.reg.code}`} className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500">
+          {pending ? 'Complete payment' : 'View registration'}
+        </Link>
+      </div>
+    );
+  }
+
+  const closed = closedState(e);
+  if (closed) {
+    return (
+      <>
+        <Button className="mt-5" disabled>
+          {closed.label}
+        </Button>
+        {closed.note && <p className="mt-2 text-center text-sm text-muted">{closed.note}</p>}
+      </>
+    );
+  }
+
+  if (!authed) {
+    return (
+      <>
+        <Link href={`/login?next=${encodeURIComponent(location)}`} className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-indigo-600 text-[15px] font-semibold text-white hover:bg-indigo-500">
+          Log in to register
+        </Link>
+        {e.registrationClosesAt && <p className="mt-2 text-center text-sm text-muted">Closes {fmtDateTime(e.registrationClosesAt)}</p>}
+      </>
+    );
+  }
+
+  if (mark?.kind === 'clash') {
+    const other = mark.reg;
+    return (
+      <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <p className="flex items-center gap-2 font-semibold text-amber-700 dark:text-amber-300">
+          <AlertIcon className="size-5 shrink-0" /> Clashes with your schedule
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-fg-2">
+          You're in <span className="font-semibold">{other.event?.name ?? 'another event'}</span> ({fmtTimeRange(other.startsAt, other.endsAt)}) at the same time. One event per time slot.
+        </p>
+        <Link href={`/my/registrations/${other.code}`} className="mt-2 inline-block text-sm font-semibold text-indigo-600 dark:text-indigo-300">
+          View that registration
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Button className="mt-5" onClick={onRegister} onPointerEnter={loadSheet} onFocus={loadSheet}>
+        {e.participation === 'TEAM' ? 'Register your team' : 'Register'}
+      </Button>
+      {e.registrationClosesAt && <p className="mt-2 text-center text-sm text-muted">Closes {fmtDateTime(e.registrationClosesAt)}</p>}
+    </>
+  );
 }
 
 const Fact = ({ icon: I, label, children }: { icon: typeof ClockIcon; label: string; children: ReactNode }) => (
@@ -34,7 +134,6 @@ const Fact = ({ icon: I, label, children }: { icon: typeof ClockIcon; label: str
 );
 
 function FactsCard({ e }: { e: EventDetail }) {
-  const cta = registerState(e);
   return (
     <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
       <dl className="-my-3 divide-y divide-line">
@@ -54,10 +153,7 @@ function FactsCard({ e }: { e: EventDetail }) {
         </Fact>
       </dl>
       {e.seatsTotal != null && e.status === 'PUBLISHED' && <SeatsBar className="mt-4" left={e.seatsLeft ?? 0} total={e.seatsTotal} />}
-      <Button className="mt-5" disabled>
-        {cta.label}
-      </Button>
-      {cta.note && <p className="mt-2 text-center text-sm text-muted">{cta.note}</p>}
+      <RegisterAction e={e} />
     </section>
   );
 }

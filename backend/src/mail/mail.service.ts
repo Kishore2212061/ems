@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import type { ClientSession } from 'mongoose';
 import type { OtpPurpose } from '../auth/schemas/otp-code.schema';
 import { env } from '../config/env';
 import { JobsService } from '../jobs/jobs.service';
@@ -65,9 +66,12 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  /** Durably queue an email (one indexed insert, ~2 ms). Delivery + retries happen in the worker. */
-  dispatch(msg: MailMessage): Promise<void> {
-    return this.jobs.enqueue(EMAIL_JOB, msg, { maxAttempts: 6 });
+  /**
+   * Durably queue an email (one indexed insert, ~2 ms). Delivery + retries happen in the worker.
+   * Pass the caller's session to queue it inside a transaction: it's sent only if the change commits.
+   */
+  dispatch(msg: MailMessage, opts: { session?: ClientSession } = {}): Promise<void> {
+    return this.jobs.enqueue(EMAIL_JOB, msg, { maxAttempts: 6, session: opts.session });
   }
 
   sendOtp(to: string, name: string, code: string, ttlMinutes: number, purpose: OtpPurpose) {
