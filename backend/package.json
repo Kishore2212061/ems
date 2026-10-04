@@ -4,6 +4,9 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
+    "seed:techfest": "node dist/cli/seed-techfest.js",
+    "seed:live": "node dist/cli/seed-live.js",
+    "media:ingest": "node dist/cli/media-ingest.js",
     "dev": "nest start --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -25,6 +28,7 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.32.0",
     "rxjs": "^7.8.2",
+    "sharp": "^0.34.5",
     "zod": "^4.6.5"
   },
   "devDependencies": {

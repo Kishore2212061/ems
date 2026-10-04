@@ -5,7 +5,7 @@ import { AuditService } from '../audit/audit.service';
 import { Errors } from '../common/app-exception';
 import { env } from '../config/env';
 import { PUBLIC_USER_FIELDS, PublicUserDoc, toPublicUser, User, USER_MODEL } from '../users/user.schema';
-import { LoginDto, ResetPasswordDto, SignupDto, VerifyOtpDto } from './auth.dto';
+import { ChangePasswordDto, LoginDto, ResetPasswordDto, SignupDto, VerifyOtpDto } from './auth.dto';
 import { OtpService } from './otp.service';
 import { burnPasswordCheck, hashPassword, verifyPassword } from './password';
 import { REFRESH_TOKEN_MODEL, RefreshToken } from './schemas/refresh-token.schema';
@@ -326,6 +326,73 @@ export class AuthService {
     return user;
   }
 
+  /** Start a session for an already-authenticated user (e.g. invite acceptance). */
+  issueSession(user: PublicUserDoc, ctx: ClientCtx) {
+    return this.startSession(user, ctx);
+  }
+
+  // ── Security settings ─────────────────────────────────────────────────────
+
+  /** Family id of the session presenting this refresh cookie (null if none/invalid). */
+  private async currentFamily(raw: string | undefined) {
+    if (!raw) return null;
+    const t = await this.refreshTokens.findOne({ token_hash: this.tokens.hashRefresh(raw) }).select('family_id').lean();
+    return t?.family_id ?? null;
+  }
+
+  /**
+   * Verify the current password, set the new one, end every session, then start a fresh one for
+   * this device — so the person changing it stays signed in and everyone else is signed out.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto, ctx: ClientCtx): Promise<SessionResult> {
+    const user = await this.users.findById(userId).select(`${PUBLIC_USER_FIELDS} +password_hash`).lean();
+    if (!user || user.status === 'SUSPENDED') throw Errors.unauthorized();
+    if (!(await verifyPassword(user.password_hash, dto.currentPassword))) {
+      throw Errors.validation({ fields: { currentPassword: 'Incorrect password' } });
+    }
+    await this.users.updateOne({ _id: user._id }, { $set: { password_hash: await hashPassword(dto.newPassword) } });
+    const ended = await this.revokeAllSessions(user._id, 'PASSWORD_CHANGED');
+    await this.audit.recordSafe({ actorId: user._id, action: 'auth.password_changed', entity: 'user', entityId: user._id, meta: { sessionsRevoked: ended }, ip: ctx.ip });
+    return this.startSession({ ...user, session_version: user.session_version + 1 }, ctx);
+  }
+
+  /** Active sessions (one live token per family thanks to rotation). Indexed on user_id. */
+  async listSessions(userId: string, raw: string | undefined) {
+    const [rows, current] = await Promise.all([
+      this.refreshTokens
+        .find({ user_id: userId, revoked_at: null, expires_at: { $gt: new Date() } })
+        .select('family_id ip user_agent created_at')
+        .sort({ created_at: -1 })
+        .limit(50)
+        .lean(),
+      this.currentFamily(raw),
+    ]);
+    return rows.map((r) => ({
+      id: r.family_id,
+      ip: r.ip ?? null,
+      userAgent: r.user_agent ?? null,
+      lastActiveAt: r.created_at,
+      current: r.family_id === current,
+    }));
+  }
+
+  async revokeSession(userId: string, familyId: string) {
+    const r = await this.refreshTokens.updateMany(
+      { user_id: userId, family_id: familyId, revoked_at: null },
+      { $set: { revoked_at: new Date(), revoke_reason: 'LOGOUT', expires_at: purgeAt() } },
+    );
+    if (!r.modifiedCount) throw Errors.notFound('Session');
+  }
+
+  async revokeOtherSessions(userId: string, raw: string | undefined) {
+    const current = await this.currentFamily(raw);
+    const r = await this.refreshTokens.updateMany(
+      { user_id: userId, revoked_at: null, ...(current && { family_id: { $ne: current } }) },
+      { $set: { revoked_at: new Date(), revoke_reason: 'LOGOUT', expires_at: purgeAt() } },
+    );
+    return { ended: r.modifiedCount };
+  }
+
   /**
    * Sign a user out everywhere, effective immediately for refresh and within one access-token TTL
    * for API calls. Use for role removal and suspension; pass `session` to make it part of the
@@ -333,7 +400,7 @@ export class AuthService {
    */
   async revokeAllSessions(
     userId: Types.ObjectId | string,
-    reason: 'ROLE_CHANGED' | 'SUSPENDED' | 'PASSWORD_RESET',
+    reason: 'ROLE_CHANGED' | 'SUSPENDED' | 'PASSWORD_RESET' | 'PASSWORD_CHANGED',
     session?: ClientSession,
   ): Promise<number> {
     await this.users.updateOne({ _id: userId }, { $inc: { session_version: 1 } }, { session });

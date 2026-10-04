@@ -25,6 +25,20 @@ describe('audit log', () => {
     });
   });
 
+  it('seeds the Super Admin as a participant too, and backfills older seeded accounts once', async () => {
+    const users = t.conn.collection('users');
+    const roles = async () => (await users.findOne({ email: 'root@test.local' }))!.roles.map((r: any) => r.role);
+    expect(await roles()).toEqual(['PARTICIPANT', 'SUPER_ADMIN']);
+
+    await users.updateOne({ email: 'root@test.local' }, { $pull: { roles: { role: 'PARTICIPANT' } } } as any); // pre-fix shape
+    const { SeedService } = await import('../src/seed/seed.service');
+    const seed = t.app.get(SeedService);
+    await seed.onApplicationBootstrap();
+    await seed.onApplicationBootstrap(); // idempotent
+    expect(await roles()).toEqual(['PARTICIPANT', 'SUPER_ADMIN']);
+    expect(await logs().countDocuments({ action: 'system.super_admin_seeded' })).toBe(1);
+  });
+
   it('redacts secrets before writing', async () => {
     await audit.record({ action: 'test.redaction', entity: 'user', entityId: 'u1', after: { name: 'x', password: 'hunter2' } });
     expect((await logs().findOne({ action: 'test.redaction' }))!.after).toEqual({ name: 'x', password: '[redacted]' });

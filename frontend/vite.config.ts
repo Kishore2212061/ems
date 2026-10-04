@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     port: 5173,
     // Same-origin in dev too, so the SameSite=Strict refresh cookie behaves exactly like prod.
-    proxy: { '/api': 'http://localhost:4000' },
+    proxy: { '/api': process.env.API_PROXY ?? 'http://localhost:4000' },
   },
   build: {
     target: 'es2022',

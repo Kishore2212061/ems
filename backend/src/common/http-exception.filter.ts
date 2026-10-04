@@ -3,6 +3,9 @@ import { ThrottlerException } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { AppException } from './app-exception';
 
+const isClientError = (e: unknown): e is { statusCode: number } =>
+  typeof (e as { statusCode?: unknown })?.statusCode === 'number' && (e as { statusCode: number }).statusCode >= 400 && (e as { statusCode: number }).statusCode < 500;
+
 /** Uniform error body: { statusCode, code, message, details? } */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -31,6 +34,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       code = HttpStatus[status] ?? 'HTTP_ERROR';
       message = exception.message;
+    } else if (isClientError(exception)) {
+      // Fastify's own request errors (body too large, unsupported media type, bad JSON…).
+      status = exception.statusCode;
+      code = exception.statusCode === 413 ? 'PAYLOAD_TOO_LARGE' : exception.statusCode === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : 'BAD_REQUEST';
+      message = exception.statusCode === 413 ? 'That upload is too large' : exception.statusCode === 415 ? 'That file type is not supported' : 'The request could not be read';
     } else {
       this.logger.error(`${req.method} ${req.url}`, (exception as Error)?.stack ?? String(exception));
     }

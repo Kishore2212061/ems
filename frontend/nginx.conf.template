@@ -44,6 +44,14 @@ server {
         try_files $uri =404;
     }
 
+    # Posters (web-sized, fixed names): cache for a month; a missing file is a real 404, never the
+    # SPA's index.html (which would make a broken image look like a 200).
+    location /media/ {
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options "nosniff" always;
+        try_files $uri =404;
+    }
+
     # SPA fallback; index.html must always be revalidated so new deploys show up immediately.
     location / {
         add_header Cache-Control "no-cache";

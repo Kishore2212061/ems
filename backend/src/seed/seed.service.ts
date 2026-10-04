@@ -5,6 +5,9 @@ import { hashPassword } from '../auth/password';
 import { AuditService } from '../audit/audit.service';
 import { env } from '../config/env';
 import { User, USER_MODEL } from '../users/user.schema';
+
+/** Every account can take part in events; staff roles are added on top (same as signup/invite). */
+const PARTICIPANT = { role: 'PARTICIPANT', scope_type: 'ORG', scope_id: null, scope_label: null, granted_by: null } as const;
 import { Organization, ORGANIZATION_MODEL } from './organization.schema';
 
 /**
@@ -28,9 +31,15 @@ export class SeedService implements OnApplicationBootstrap {
       { upsert: true },
     );
 
+    // One-off backfill for users created before full_name_lc existed (no-op afterwards; uses no index scan once done).
+    await this.users.updateMany({ full_name_lc: { $exists: false } }, [{ $set: { full_name_lc: { $toLower: '$full_name' } } }]);
+
     const email = env.SEED_SUPER_ADMIN_EMAIL?.toLowerCase();
     if (!email || !env.SEED_SUPER_ADMIN_PASSWORD) return;
-    if (await this.users.exists({ email })) return;
+    // Accounts seeded before this fix had no Participant role (so no participant view to switch to).
+    // Unique-index lookup; a no-op once applied.
+    const fixed = await this.users.updateOne({ email, 'roles.role': { $ne: 'PARTICIPANT' } }, { $push: { roles: { $each: [{ ...PARTICIPANT, granted_at: new Date() }], $position: 0 } } });
+    if (fixed.matchedCount || (await this.users.exists({ email }))) return;
 
     try {
       const admin = await this.users.create({
@@ -39,7 +48,7 @@ export class SeedService implements OnApplicationBootstrap {
         password_hash: await hashPassword(env.SEED_SUPER_ADMIN_PASSWORD),
         status: 'ACTIVE',
         first_login_otp_done: false, // first login still requires email OTP
-        roles: [{ role: 'SUPER_ADMIN', scope_type: 'ORG', scope_id: null, granted_by: null }],
+        roles: [PARTICIPANT, { role: 'SUPER_ADMIN', scope_type: 'ORG', scope_id: null, granted_by: null }],
       });
       await this.audit.recordSafe({ action: 'system.super_admin_seeded', entity: 'user', entityId: admin._id, after: { email } });
       this.logger.log(`Super Admin created: ${email}`);

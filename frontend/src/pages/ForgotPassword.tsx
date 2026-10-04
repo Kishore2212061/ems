@@ -11,7 +11,7 @@ import { otpErrorMessage } from '@/lib/otp-error';
 import { useCountdown } from '@/lib/use-countdown';
 import { useSubmit } from '@/lib/use-submit';
 import { rules } from '@/lib/validate';
-import type { OtpChallenge } from '@/store/auth';
+import { currentHome, type OtpChallenge } from '@/store/auth';
 
 const LENGTH = 6;
 
@@ -56,7 +56,7 @@ export default function ForgotPassword() {
         throw otpErrorMessage(err);
       }
     });
-    if (ok) navigate('/dashboard', { replace: true });
+    if (ok) navigate(currentHome(), { replace: true });
   }
 
   async function onResend() {

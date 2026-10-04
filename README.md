@@ -10,7 +10,9 @@ Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.m
 |---|--------|--------|
 | 1 | Auth — signup, first-login email OTP, login, refresh rotation, logout | ✅ |
 | 1.5 | Foundations: tests (104), permissions, audit log, job queue, shared UI, CI | ✅ |
-| 2 | Global events & multi-role switching | ⏳ |
+| 2 | Fests, departments, people & roles, invites, profile/security, admin console | ✅ |
+| 3 | Department events: catalogue, search, authoring, Tech Fest '25 seed (123 events) | ✅ |
+| 4 | Registrations, teams & seat holds | ⏳ |
 
 ## Architecture (Module 1)
 
@@ -52,14 +54,26 @@ cd frontend && npm install && npm run dev   # http://localhost:5173 (proxies /ap
 
 With `EMAIL_PROVIDER=console`, OTP emails are printed in the backend log.
 
+Load the real NEC Tech Fest '25 catalogue (123 events) into the database from `.env` — safe to run again, it never overwrites edits:
+
+```bash
+cd backend && npm run build && npm run seed:techfest
+```
+
+Publish the upcoming edition as a **live fest** (the same 123 events on next March's Friday + Saturday, registration open, and a mix of free / pay-online / pay-at-the-desk entry):
+
+```bash
+cd backend && npm run build && npm run seed:live
+```
+
 ### Tests
 
 ```bash
-cd backend && npm test      # 73 e2e/unit tests; uses a local mongod if installed, else downloads one
+cd backend && npm test      # 156 e2e/unit tests; uses a local mongod if installed, else downloads one
 ```
 
 ```bash
-cd frontend && npm test && npm run build && npm run check:bundle   # 31 tests + gzip budget gate
+cd frontend && npm test && npm run build && npm run check:bundle   # 52 tests + gzip budget gate
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.

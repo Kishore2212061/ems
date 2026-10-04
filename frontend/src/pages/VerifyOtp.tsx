@@ -10,13 +10,13 @@ import { authApi } from '@/lib/auth-api';
 import { otpErrorMessage } from '@/lib/otp-error';
 import { useCountdown } from '@/lib/use-countdown';
 import { useSubmit } from '@/lib/use-submit';
-import { useAuth } from '@/store/auth';
+import { currentHome, useAuth } from '@/store/auth';
 
 const LENGTH = 6;
 
 export default function VerifyOtp() {
   const [, navigate] = useLocation();
-  const next = new URLSearchParams(useSearch()).get('next') || '/dashboard';
+  const next = new URLSearchParams(useSearch()).get('next');
   const challenge = useAuth((s) => s.challenge);
   const setChallenge = useAuth((s) => s.setChallenge);
   const [code, setCode] = useState('');
@@ -40,7 +40,7 @@ export default function VerifyOtp() {
         throw otpErrorMessage(e);
       }
     });
-    if (ok) navigate(next, { replace: true });
+    if (ok) navigate(next ?? currentHome(), { replace: true });
   }
 
   async function onResend() {

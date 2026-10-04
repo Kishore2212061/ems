@@ -80,6 +80,15 @@ export class RbacService {
   }
 
   /**
+   * Combine a query with a scope filter. ALWAYS use this instead of object spread: both can
+   * contain the same key (e.g. `_id`), and `{ _id: id, ...scope }` silently replaces the requested
+   * id with the scope's — returning a *different* record instead of "not found".
+   */
+  withScope<F extends Record<string, unknown>>(filter: F, scope: Record<string, unknown>): Record<string, unknown> {
+    return Object.keys(scope).length ? { $and: [filter, scope] } : filter;
+  }
+
+  /**
    * Call inside a transaction that removes/suspends a Super Admin, AFTER making the change.
    * Throws 409 if no active Super Admin would remain.
    *

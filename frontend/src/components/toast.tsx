@@ -36,13 +36,17 @@ const STYLE: Record<ToastTone, string> = {
   info: 'text-indigo-600 dark:text-indigo-400',
 };
 
-/** Mount once at the app root. Bottom-centre on phones, bottom-right on desktop; announced politely. */
+/**
+ * Mount once at the app root. Desktop: centred over the empty middle of the header bar, so it never
+ * covers page actions or sticky save buttons. Phones: just under the header (clear of the bottom tab
+ * bar). Announced politely to screen readers.
+ */
 export function Toaster() {
   const items = useToasts((s) => s.items);
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-4 sm:items-end sm:p-6"
+      className="pointer-events-none fixed inset-x-0 top-16 z-50 flex flex-col items-center gap-2 p-4 sm:top-3 sm:p-0"
     >
       {items.map((t) => (
         <div

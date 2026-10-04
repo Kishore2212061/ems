@@ -1,9 +1,9 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { AuthUser, CurrentUser, Public } from '../common/decorators';
 import { ZodPipe } from '../common/zod.pipe';
-import { ForgotPasswordDto, LoginDto, ResendOtpDto, ResetPasswordDto, SignupDto, VerifyOtpDto } from './auth.dto';
+import { ChangePasswordDto, ForgotPasswordDto, LoginDto, ResendOtpDto, ResetPasswordDto, SignupDto, VerifyOtpDto } from './auth.dto';
 import { AuthService, SessionResult } from './auth.service';
 import { ClientCtx, REFRESH_COOKIE, TokenService } from './token.service';
 
@@ -110,5 +110,37 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user.id);
+  }
+
+  // ── security settings (under /auth so the refresh cookie identifies "this device") ──
+
+  @Throttle(AUTH_LIMIT)
+  @Post('change-password')
+  @HttpCode(200)
+  async changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodPipe(ChangePasswordDto)) dto: ChangePasswordDto,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.withSession(reply, await this.auth.changePassword(user.id, dto, ctxOf(req)));
+  }
+
+  @Get('sessions')
+  sessions(@CurrentUser() user: AuthUser, @Req() req: FastifyRequest) {
+    return this.auth.listSessions(user.id, req.cookies[REFRESH_COOKIE]);
+  }
+
+  @Post('sessions/revoke-others')
+  @HttpCode(200)
+  revokeOthers(@CurrentUser() user: AuthUser, @Req() req: FastifyRequest) {
+    return this.auth.revokeOtherSessions(user.id, req.cookies[REFRESH_COOKIE]);
+  }
+
+  @Delete('sessions/:id')
+  @HttpCode(204)
+  async revokeSession(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return; // not a family id → nothing to do
+    await this.auth.revokeSession(user.id, id);
   }
 }

@@ -35,3 +35,20 @@ export function otpEmail(p: { name: string; code: string; ttlMinutes: number; pu
     text: `Hi ${p.name}, ${copy.intro}: ${p.code}\n\nIt expires in ${p.ttlMinutes} minutes.\n\nIf you didn't request it, ignore this email.`,
   };
 }
+
+const ROLE_NAME: Record<string, string> = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Admin', FINANCE: 'Finance', SCANNER: 'Scanner' };
+
+export function inviteEmail(p: { inviter: string; role: string; scopeLabel: string | null; link: string; ttlHours: number }) {
+  const what = `${ROLE_NAME[p.role] ?? p.role}${p.scopeLabel ? ` · ${p.scopeLabel}` : ''}`;
+  const html = layout(
+    "You're invited to NEC Events",
+    `<p style="margin:0 0 16px;line-height:1.5;color:#374151">${esc(p.inviter)} invited you to join as <strong>${esc(what)}</strong>.</p>
+<p style="margin:0 0 24px"><a href="${esc(p.link)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px">Accept invitation</a></p>
+<p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5">This link expires in ${p.ttlHours} hours and works once. If you weren't expecting it, ignore this email.</p>`,
+  );
+  return {
+    subject: `Invitation: ${what} — NEC Events`,
+    html,
+    text: `${p.inviter} invited you to join NEC Events as ${what}.\n\nAccept: ${p.link}\n\nThe link expires in ${p.ttlHours} hours.`,
+  };
+}

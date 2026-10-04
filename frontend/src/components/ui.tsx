@@ -1,4 +1,4 @@
-import { useId, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SVGProps } from 'react';
+import { useId, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type SVGProps, type TextareaHTMLAttributes } from 'react';
 import { passwordScore } from '@/lib/validate';
 import { AlertIcon, CheckIcon, EyeIcon, EyeOffIcon } from './icons';
 
@@ -141,6 +141,60 @@ export function Field({ label, error, hint, icon: I, prefix, trailing, footer, c
         footer
       )}
     </div>
+  );
+}
+
+const control = (error?: string) =>
+  cx(
+    'w-full rounded-xl border bg-surface px-3.5 text-[15px] text-fg shadow-sm outline-none transition-all placeholder:text-subtle focus:ring-4 disabled:opacity-60',
+    error
+      ? 'border-red-300 focus:border-red-400 focus:ring-red-500/10 dark:border-red-500/60'
+      : 'border-line hover:border-line-strong focus:border-indigo-500 focus:ring-indigo-500/10',
+  );
+
+function FieldShell({ id, label, error, hint, children, className }: { id: string; label: string; error?: string; hint?: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <div className={className}>
+      <div className="mb-2 flex items-baseline justify-between">
+        <label htmlFor={id} className="text-sm font-semibold text-fg-2">
+          {label}
+        </label>
+        {hint}
+      </div>
+      {children}
+      {error && (
+        <p id={`${id}-err`} className="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium text-red-600 dark:text-red-400">
+          <AlertIcon className="size-3.5 shrink-0" />
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Native <select> (accessible, 0 KB) styled to match Field. */
+export function SelectField({ label, error, hint, className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label: string; error?: string; hint?: ReactNode }) {
+  const id = useId();
+  return (
+    <FieldShell id={id} label={label} error={error} hint={hint} className={className}>
+      <div className="relative">
+        <select id={id} aria-invalid={!!error} {...props} className={cx(control(error), 'h-12 appearance-none pr-10')}>
+          {children}
+        </select>
+        <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-subtle" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </div>
+    </FieldShell>
+  );
+}
+
+export function TextareaField({ label, error, hint, className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; error?: string; hint?: ReactNode }) {
+  const id = useId();
+  return (
+    <FieldShell id={id} label={label} error={error} hint={hint} className={className}>
+      <textarea id={id} aria-invalid={!!error} rows={4} {...props} className={cx(control(error), 'block min-h-24 py-3 leading-relaxed')} />
+    </FieldShell>
   );
 }
 

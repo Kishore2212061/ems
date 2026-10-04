@@ -52,3 +52,11 @@ export type ResetPasswordDto = z.infer<typeof ResetPasswordDto>;
 
 export const ResendOtpDto = z.object({ otpToken: z.string().min(1).max(1000) });
 export type ResendOtpDto = z.infer<typeof ResendOtpDto>;
+
+export const ChangePasswordDto = z
+  .object({
+    currentPassword: z.string().min(1, 'Enter your current password').max(128),
+    newPassword: password,
+  })
+  .refine((v) => v.currentPassword !== v.newPassword, { message: 'Choose a different password', path: ['newPassword'] });
+export type ChangePasswordDto = z.infer<typeof ChangePasswordDto>;

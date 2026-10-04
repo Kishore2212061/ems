@@ -10,7 +10,7 @@ const user = {
   college: null,
   status: 'ACTIVE' as const,
   emailVerified: true,
-  roles: [{ role: 'PARTICIPANT' as const, scopeType: 'ORG', scopeId: null }],
+  roles: [{ role: 'PARTICIPANT' as const, scopeType: 'ORG' as const, scopeId: null, scopeLabel: null }],
   createdAt: '2026-01-01',
 };
 
@@ -33,6 +33,17 @@ describe('api client', () => {
     expect(url).toBe('/api/v1/auth/me');
     expect(init.headers.Authorization).toBe('Bearer tok-1');
     expect(localStorage.length + sessionStorage.length).toBe(0); // token never persisted
+  });
+
+  it('uploads a file as the raw body with its own type (not JSON)', async () => {
+    applySession({ accessToken: 'tok-1', expiresIn: 900, user });
+    fetchMock.mockResolvedValue(json(201, { url: '/api/v1/media/p1.webp' }));
+    const file = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' });
+    expect(await api.upload('/admin/media/posters', file)).toEqual({ url: '/api/v1/media/p1.webp' });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.method).toBe('POST');
+    expect(init.headers['Content-Type']).toBe('image/png');
+    expect(init.body).toBe(file);
   });
 
   it('maps error bodies to ApiError with code and details', async () => {

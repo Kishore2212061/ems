@@ -7,11 +7,15 @@ import { AuthModule } from './auth/auth.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { AppThrottlerGuard } from './common/throttler.guard';
 import { env } from './config/env';
+import { GlobalEventsModule } from './global-events/global-events.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
+import { LocalEventsModule } from './local-events/local-events.module';
 import { MailModule } from './mail/mail.module';
+import { MediaModule } from './media/media.module';
 import { RbacModule } from './rbac/rbac.module';
 import { SeedModule } from './seed/seed.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -30,6 +34,10 @@ import { SeedModule } from './seed/seed.module';
     MailModule,
     AuthModule,
     SeedModule,
+    MediaModule,
+    GlobalEventsModule,
+    LocalEventsModule,
+    UsersModule,
   ],
   controllers: [HealthController],
   providers: [

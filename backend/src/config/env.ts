@@ -66,6 +66,7 @@ const schema = z
     OTP_MAX_PER_WINDOW: int(3),
     LOGIN_MAX_ATTEMPTS: int(5),
     LOGIN_LOCK_MINUTES: int(15),
+    INVITE_TTL_HOURS: int(72),
 
     /** Background job worker (MongoDB queue). */
     JOBS_ENABLED: bool(true),

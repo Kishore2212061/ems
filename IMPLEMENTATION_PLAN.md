@@ -51,7 +51,7 @@ Every module follows the same loop, and a module is **not done** until all five 
 | 3 | Railway: create `backend` + `frontend` services, paste `backend/.env.railway` into Raw Editor, set `BACKEND_URL` on frontend, generate both domains | **You** |
 | 4 | Atlas → Network Access → `0.0.0.0/0` | **You** |
 | 5 | Set `WEB_BASE_URL` / `CORS_ORIGINS` to the real frontend URL | **You** |
-| 6 | Change `SEED_SUPER_ADMIN_EMAIL` from the public `admin@mailsac.com` to a real inbox | **You** |
+| 6 | ~~Change `SEED_SUPER_ADMIN_EMAIL` from `admin@mailsac.com`~~ → `admin-techfest@mailsac.com` locally (2026-10-03). Railway uses `superadmin989@mailsac.com`. Before go-live: a real, private inbox | **You** |
 | 7 | Live smoke test: signup → OTP email → dashboard → reload stays logged in → logout → forgot password | Both |
 
 ### Deferred from Module 1 (picked up later in this plan)
@@ -252,6 +252,33 @@ Collection `job_queue`:
 
 **Goal:** Super Admin creates fests (several can be live at once), attaches departments, invites staff with scoped roles. Users with multiple roles switch context without logging out.
 
+> ### ✅ Status: DONE (2026-10-03)
+> | Area | Result |
+> |---|---|
+> | Backend | Departments (seeded with the 9 NEC associations), fests (create/edit with optimistic versioning, publish/suspend/reactivate/complete, clone to next edition), user directory, grant/revoke roles, suspend/reactivate, invites (send/resend/withdraw/preview/accept), profile, change password, active sessions, audit feed. ETags on every GET. |
+> | Frontend | Public home + fest pages; admin console (overview, fests list/new/detail with Details · Departments · Activity tabs, departments, people, invites) with sidebar on desktop and bottom tabs on phones; role switcher; accept-invite page; profile + password & sessions pages. |
+> | Tests | Backend **110** (+37 for Module 2, incl. index plans for every new query); frontend **36**. |
+> | Bundle | Initial JS **76.7 KB** gz (+2.0), CSS 13.0 KB; every Module 2 screen is its own 0.5–3.2 KB lazy chunk; the admin console never loads for participants. |
+> | Verified in the browser | Full flow on an isolated local stack: Super Admin first login → create fest → add departments → publish → public pages; invite a CSE admin → accept → scoped console (read-only fest, no People) → role switch persists; every screen checked at 375 px with no horizontal overflow. |
+>
+> **Decisions (deviations from the original plan)**
+> - **No `/auth/switch-role` endpoint.** The API authorises with *all* of a user's roles (scoped), so switching is purely UI context (0 requests), remembered per user in `localStorage`.
+> - **One surface per role context.** `/dashboard` renders only in the Participant context (staff contexts are redirected to their own home), `/admin` for Super Admin/Admin/Finance, `/scan` for Scanner (placeholder until Module 8). Switching lives in the header pill (tablet/desktop) and the avatar menu (all sizes), listing every held role with its destination.
+> - **Every account is a participant.** Signup and invites already granted it; the seeded Super Admin now does too (existing seeded accounts are backfilled once at boot by a unique-index lookup), so staff can switch to the participant view.
+> - **Departments are embedded in fests** (`{department_id, code, name}`) instead of a bridge collection → a fest page is one query; renames propagate with one indexed `updateMany`.
+> - **Role labels are denormalised** on the user's role (`scope_label`) → refresh/`/me` need no lookups; kept in sync on fest/department rename.
+> - **Accepting an invite verifies the email** (the link was emailed) — no extra OTP.
+> - **Tiny `useQuery` (~1 KB)** instead of TanStack Query (~13 KB).
+> - **Department admins** can read (not edit) every fest their department takes part in; inviting: Super Admin → any staff role; others → ADMIN/SCANNER inside their own scope only.
+>
+> **Bugs found & fixed while building Module 2**
+> 1. *Scope bypass (security):* `{ _id: id, ...scopeFilter }` let the scope's `_id` overwrite the requested id, so a scoped admin asking for another fest received **their own fest (200)** instead of 404. Fixed with `RbacService.withScope()` (`$and`); unit + e2e regression tests.
+> 2. *Invite takeover (security):* accepting an invite for an email that had an **unverified** signup would have verified that account with the squatter's password. Now the invitee sets their own password; regression test.
+> 3. *Stale closure in the department chips:* fast clicks overwrote each other (only the last chip stuck). Fixed with functional updates; regression test proven to fail on the old code.
+> 4. *Toasts covered page actions / the mobile tab bar* — moved into the empty centre of the header.
+>
+> **Done (2026-10-03):** local `SEED_SUPER_ADMIN_EMAIL` changed from the private, reserved `admin@mailsac.com` (its OTP could never be read) to the public `admin-techfest@mailsac.com`. The old account remains in the database as an unusable Super Admin; suspend it from People. Public mailsac inboxes are readable by anyone, so use a private inbox before go-live.
+
 ### 3.1 Data model
 | Collection | Key fields | Indexes |
 |---|---|---|
@@ -273,7 +300,7 @@ Collection `job_queue`:
 | POST | `/global-events/:id/clone` | `global_event.create` | Copies structure, new year, DRAFT |
 | POST | `/global-events/:id/departments` · DELETE `…/:deptId` | `global_event.update` | Cannot detach a department that has local events |
 | CRUD | `/departments` | `department.manage` | Master catalog |
-| POST | `/auth/switch-role` | authenticated | Body `{role, scopeType, scopeId}`; must be one of the user's roles → new access token with `ctx` claim |
+| ~~POST~~ | ~~`/auth/switch-role`~~ | — | **Dropped** — role switching is UI-only (see Status) |
 | POST | `/admin/invites` · GET · DELETE `/:id` · POST `/:id/resend` | `user.invite` | 72 h token, email `AUTH_INVITE_ADMIN` |
 | POST | `/auth/accept-invite` | public | `{token, fullName, password}` → creates/updates user, adds role, first-login OTP |
 | GET/PATCH | `/me/profile` | authenticated | Edit name, phone, college |
@@ -333,6 +360,36 @@ Create *Tech Fest '25* and a second test fest, publish both and check both on `/
 ## 4. Module 3 — Local Event Catalog & Seed Data
 
 **Goal:** departments author registerable events (Blind Coding, Hackathon …). The public can browse and filter them. Seed real Tech Fest '25 data.
+
+> ### ✅ Status: DONE (2026-10-03)
+> | Area | Result |
+> |---|---|
+> | Backend | `local_events` with scoped admin CRUD (fest-, department- and org-level roles), optimistic versioning, lifecycle (publish · pause · resume · cancel · complete · duplicate · delete draft), capacity guard, price versioning. Public catalogue: keyset pages in time order, department/category/free filters, weighted `$text` search, chip counts. Fest publish now needs ≥ 1 live event; fest clone copies events as drafts; departments with events can't leave a fest; department renames reach events. |
+> | Seed data | **123 real events** from techfestnec.vercel.app → `backend/seed/techfest-2025.json` (8 departments + fest-wide Ideathon), normalised and hand-reviewed. `npm run seed:techfest` imports it (insert-only, idempotent). |
+> | Frontend | Fest page catalogue (sticky search + category/department chips with counts, URL-backed filters, infinite scroll with a "Show more" fallback, feed cached across navigation); event page (facts panel, rules, coordinators with tap-to-call, resource person, lazy poster); admin **Events** tab and authoring screen (sectioned form, sticky "Unsaved changes" bar, saves only changed fields, lifecycle dialogs). |
+> | Tests | Backend **156** (+46: seed import, paging/filters/search, validation, partial saves, versioning, capacity, lifecycle, scope, fest↔event rules, index plans, slugs); frontend **52** (+16: catalogue filters/debounce/stale-response race, authoring diff, image variants, uploads, one-layout lists). |
+> | Bundle | Initial JS **76.9 KB** gz (+0.2), CSS 13.8 KB. Fest page incl. catalogue 3.6 KB (budget 8), event page 2.5 KB, authoring screen 6.6 KB (admins only). **0 KB markdown renderer** (budget was 12 KB). |
+> | Verified in the browser | Isolated local stack: seed import → fest catalogue (filters, search, paging, counts) → event page → Super Admin clones Tech Fest '25 into '26 (123 draft events, dates +1 year) → edits Blind Coding (PATCH sent only `seatsTotal`) → publishes event + fest → only that event is public. All new screens at 320 px with no horizontal overflow. |
+>
+> **Decisions (deviations from the original plan)**
+> - **Plain text, not markdown.** Description and rules are stored as text and rendered as text (React escapes it) → no sanitiser, no 12 KB renderer, XSS-proof by construction. Rules are a list of lines.
+> - **Catalogue lives on each fest page** (`/events/:fest`, filters in the query string) instead of a separate cross-fest `/events` directory; detail is `/events/:fest/:event` (event slugs are unique per fest, so no department segment).
+> - **Posters are self-hosted, web-sized.** The source posters are 1587×2245, 360–540 KB each (84 MB total) and hotlinked from the old site. Now each one ships in `frontend/public/media/tf25/` as `<slug>.webp` (720 px, ~62 KB) and `<slug>-card.webp` (640×400 crop around the title line, ~22 KB); 10 MB total. Cards lazy-load the card image in a fixed 16:10 box; the event page shows it in the header and opens the full poster in a dialog only on request. `bannerUrl` stays one field; variants are derived (`frontend/src/lib/media.ts`: `/media` → `-card.webp`, Cloudinary → `c_fill,w_640,h_400`). The API accepts https URLs or `/media/…` files only. nginx serves `/media/` with a 30-day cache and a real 404 for missing files. Re-running a seed swaps old hotlinked posters (`replaceImagesFrom`) but never an image an organiser set. Paper Presentation (Mech) has no poster: it's missing on the source site too.
+> - **Pricing:** Tech Fest '25 sold day passes (₹200 one day / ₹300 both), not per-event tickets, so the *past* edition imports as free. Each event now also says **how** a fee is paid: `pricing.modes` = `ONLINE` (gateway while registering) and/or `OFFLINE` (at the registration desk); a paid event needs at least one. **Open question for Module 4/5:** per-event fees vs. fest passes.
+> - **Live demo edition:** `npm run seed:live` publishes *NEC Tech Fest '27* (12–13 Mar 2027) from the same catalogue: registration open until the evening before, non-technical events free, workshops ₹300/person online, paper & poster presentations ₹200/team online, other technical events ₹100/team at the desk, Ideathon ₹500/team either way (`local-events/live-edition.ts`). **Loaded into the dev database on 2026-10-03:** 1 live fest, 122 live events + 1 draft (a workshop with no venue).
+> - **Venue geofencing, refund window, `EVENT_TIME_CHANGED` emails and templates** move to the modules that use them (check-in, refunds, registrations).
+> - **Every poster is compressed by the server (media pipeline).** Organisers either upload a file (raw image body, ≤ 10 MB, no multipart dependency) or paste a link, which is imported the moment it's pasted (and again on save as a safety net). `sharp` makes the 720 px full + 640×400 card WebP variants (EXIF stripped, ≤ 60 MP decompression-bomb guard), stored content-addressed in `media_assets` and served from `/api/v1/media/…` with a one-year immutable cache. Link imports are SSRF-safe: https only, the resolved IP is checked inside the socket's own DNS lookup (no rebinding window) against loopback/private/link-local/metadata ranges, ≤ 3 redirects, 10 s, 10 MB. Example: the Mech poster an organiser pasted was 2.2 MB / 27.6 MP; it is now a 37 KB card + 87 KB full. `npm run media:ingest` converts any links still stored.
+> - **Scroll smoothness, measured** (real Chrome, production build, CPU slowed 4×, Chrome's own wheel/touch fling over the list): participant catalogue (122 cards) and admin events list (123 rows) present ~100% of frames (0–0.5% dropped; no checkerboarding on phones). Reproducing the old state (27.6 MP poster on a card + hover zoom) showed checkerboarding (blank patches) of 15 frames per fling. Fixes: server-side compression, no hover transitions on cards/rows, no card shadows, the admin `DataList` renders only the layout on screen (half the DOM). `content-visibility: auto` was tried and **removed**: its per-card visibility tracking cost more than it saved.
+> - **Delete only never-published drafts;** anything that went live is cancelled (registrants keep a record).
+>
+> **Bugs found & fixed while building Module 3**
+> 1. *Partial saves reset fields (data loss):* the update schema inherited the create defaults, so a PATCH with only `teamMin` also sent `participation: INDIVIDUAL`, `tags: []`, `description: ''`… Fixed by keeping defaults on create/import only; regression test.
+> 2. *Catalogue too wide on phones:* an implicit grid column grew to fit a long venue instead of truncating, so the page was 506 px wide at 320 px. Fixed with `grid-cols-1` (`minmax(0,1fr)`).
+> 3. *Admin events table overflowed* (one long name stretched the column to 707 px) — names capped and truncated.
+> 4. *"Online" shown for an event that simply had no venue* — now "Venue TBA".
+> 5. *Slugs cut mid-word* at 60 characters (`…-and-tol`) — now cut at a word boundary.
+>
+> **Run once per database:** `cd backend && npm run build && npm run seed:techfest` (also on Railway, from the service shell).
 
 ### 4.1 Data model — `local_events`
 ```ts
@@ -783,8 +840,8 @@ Add a CI step that fails the build if any budget is exceeded (`vite build` outpu
 |---|---|---|---|
 | 0 | Finish Module 1 deploy (§0) | 0.5 day | — |
 | 1 | **1.5 Foundations** (tests, RBAC, job queue, audit) ✅ | done | 0 |
-| 2 | **2 Global events, departments, roles, invites, profile** | 4–5 days | 1.5 |
-| 3 | **3 Local events + seed** | 3–4 days | 2 |
+| 2 | **2 Global events, departments, roles, invites, profile** ✅ | done | 1.5 |
+| 3 | **3 Local events + seed** ✅ | 3–4 days | 2 |
 | 4 | **4 Registrations + seat holds** | 4–5 days | 3 |
 | 5 | **5 Payments** | 4–5 days | 4 |
 | 6 | **6 Tickets + QR** | 2–3 days | 5 |

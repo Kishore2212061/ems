@@ -23,6 +23,6 @@
   "include": [
     "src/**/*",
     "test/**/*",
-    "vitest.config.ts"
+    "vitest.config.mts"
   ]
 }

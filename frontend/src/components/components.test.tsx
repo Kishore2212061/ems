@@ -62,13 +62,26 @@ describe('DataList', () => {
     expect(screen.getByText('Nothing here')).toBeTruthy();
   });
 
-  it('renders rows (mobile cards + desktop table) and handles clicks', async () => {
+  const screenWidth = (wide: boolean) =>
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: wide, media: q, addEventListener: () => {}, removeEventListener: () => {} }));
+
+  it('desktop: renders only the table (one layout in the DOM) and handles clicks', async () => {
+    screenWidth(true);
     const onRowClick = vi.fn();
     render(<DataList columns={cols} rows={[{ id: '1', name: 'Tech Fest' }]} rowKey={(r) => r.id} onRowClick={onRowClick} />);
-    const cells = screen.getAllByText('Tech Fest');
-    expect(cells).toHaveLength(2); // card + table cell; CSS decides which is visible
-    await userEvent.click(cells[1]);
+    expect(screen.getAllByText('Tech Fest')).toHaveLength(1);
+    expect(screen.getByRole('table')).toBeTruthy();
+    await userEvent.click(screen.getByText('Tech Fest'));
     expect(onRowClick).toHaveBeenCalledWith({ id: '1', name: 'Tech Fest' });
+    vi.unstubAllGlobals();
+  });
+
+  it('phones: renders only the stacked list', () => {
+    screenWidth(false);
+    render(<DataList columns={cols} rows={[{ id: '1', name: 'Tech Fest' }]} rowKey={(r) => r.id} />);
+    expect(screen.getAllByText('Tech Fest')).toHaveLength(1);
+    expect(screen.queryByRole('table')).toBeNull();
+    vi.unstubAllGlobals();
   });
 });
 

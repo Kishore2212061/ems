@@ -35,4 +35,14 @@ export const Errors = {
     new AppException(HttpStatus.TOO_MANY_REQUESTS, 'OTP_COOLDOWN', 'Please wait before requesting another code', { retryAfterSec }),
   unauthorized: (code = 'UNAUTHORIZED', message = 'Please log in to continue') =>
     new AppException(HttpStatus.UNAUTHORIZED, code, message),
+  /** Also used for records outside the caller's scope, so their existence isn't leaked. */
+  notFound: (what = 'Record') => new AppException(HttpStatus.NOT_FOUND, 'NOT_FOUND', `${what} not found`),
+  conflict: (code: string, message: string, details?: Record<string, unknown>) =>
+    new AppException(HttpStatus.CONFLICT, code, message, details),
+  unprocessable: (code: string, message: string, details?: Record<string, unknown>) =>
+    new AppException(HttpStatus.UNPROCESSABLE_ENTITY, code, message, details),
+  badRequest: (code: string, message: string, details?: Record<string, unknown>) =>
+    new AppException(HttpStatus.BAD_REQUEST, code, message, details),
+  forbidden: (code: string, message: string) => new AppException(HttpStatus.FORBIDDEN, code, message),
+  gone: (code: string, message: string) => new AppException(HttpStatus.GONE, code, message),
 };

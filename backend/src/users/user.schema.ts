@@ -12,6 +12,8 @@ export interface UserRole {
   role: Role;
   scope_type: ScopeType;
   scope_id: Types.ObjectId | null;
+  /** Denormalised scope name ("CSE", "NEC Tech Fest '25") so role lists need no lookups. */
+  scope_label?: string | null;
   granted_at: Date;
   granted_by: Types.ObjectId | null;
 }
@@ -21,6 +23,8 @@ export interface User {
   email: string;
   password_hash: string;
   full_name: string;
+  /** Lower-cased full_name for anchored, indexed admin search (maintained by middleware). */
+  full_name_lc?: string;
   phone?: string;
   college?: string;
   roles: UserRole[];
@@ -43,6 +47,7 @@ const UserRoleSchema = new Schema<UserRole>(
     role: { type: String, enum: ROLES, required: true },
     scope_type: { type: String, enum: SCOPE_TYPES, required: true },
     scope_id: { type: Schema.Types.ObjectId, default: null },
+    scope_label: { type: String, default: null },
     granted_at: { type: Date, default: Date.now },
     granted_by: { type: Schema.Types.ObjectId, default: null },
   },
@@ -54,6 +59,7 @@ export const UserSchema = new Schema<User>(
     email: { type: String, required: true, lowercase: true, trim: true },
     password_hash: { type: String, required: true, select: false },
     full_name: { type: String, required: true, trim: true },
+    full_name_lc: { type: String },
     phone: { type: String, trim: true },
     college: { type: String, trim: true },
     roles: { type: [UserRoleSchema], default: [] },
@@ -69,8 +75,19 @@ export const UserSchema = new Schema<User>(
 );
 
 UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ full_name_lc: 1 });
 // Module 2+: "who has a role on X" lookups
 UserSchema.index({ 'roles.role': 1, 'roles.scope_id': 1 });
+
+// Keep full_name_lc in sync on every write path (create, updateOne, findOneAndUpdate).
+UserSchema.pre('validate', function () {
+  if (this.full_name) this.full_name_lc = this.full_name.toLowerCase();
+});
+UserSchema.pre(['updateOne', 'findOneAndUpdate', 'updateMany'], function () {
+  const u = this.getUpdate() as Record<string, any> | null;
+  const name = u?.$set?.full_name ?? u?.full_name;
+  if (typeof name === 'string') this.set('full_name_lc', name.trim().toLowerCase());
+});
 
 /** Fields any auth response needs — keeps every read a narrow projection. */
 export const PUBLIC_USER_FIELDS =
@@ -94,6 +111,7 @@ export function toPublicUser(u: PublicUserDoc) {
       role: r.role,
       scopeType: r.scope_type,
       scopeId: r.scope_id ? String(r.scope_id) : null,
+      scopeLabel: r.scope_label ?? null,
     })),
     createdAt: u.created_at,
   };

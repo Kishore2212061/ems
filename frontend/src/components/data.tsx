@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode, SVGProps } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
 import { cx } from './ui';
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -85,6 +85,20 @@ export interface Column<T> {
  * Responsive list: a real <table> from `sm` up, stacked cards on phones (no horizontal scroll).
  * Handles loading (skeleton rows), empty and row-click states.
  */
+/** Tracks a media query (e.g. the `sm` breakpoint) so only the layout on screen is rendered. */
+function useMedia(query: string) {
+  const [match, setMatch] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia?.(query);
+    if (!m) return;
+    const on = () => setMatch(m.matches);
+    on();
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, [query]);
+  return match;
+}
+
 export function DataList<T>({ columns, rows, rowKey, onRowClick, loading, empty, skeletonRows = 5 }: {
   columns: Column<T>[];
   rows: T[];
@@ -98,11 +112,12 @@ export function DataList<T>({ columns, rows, rowKey, onRowClick, loading, empty,
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const rest = columns.filter((c) => c !== primary && !c.hideOnMobile);
   const clickable = !!onRowClick;
+  // One layout in the DOM, not two (one hidden by CSS): half the nodes for long admin lists.
+  const wide = useMedia('(min-width: 640px)');
 
-  return (
-    <>
-      {/* phones */}
-      <ul className="divide-y divide-line sm:hidden">
+  if (!wide) {
+    return (
+      <ul className="divide-y divide-line">
         {loading
           ? Array.from({ length: skeletonRows }, (_, i) => (
               <li key={i} className="space-y-2 px-5 py-4">
@@ -130,11 +145,13 @@ export function DataList<T>({ columns, rows, rowKey, onRowClick, loading, empty,
               </li>
             ))}
       </ul>
+    );
+  }
 
-      {/* tablet + desktop */}
-      <div className="hidden overflow-x-auto sm:block">
+  return (
+    <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-surface">
+          <thead className="bg-surface">
             <tr className="border-b border-line text-left">
               {columns.map((c) => (
                 <th key={c.key} scope="col" className={cx('whitespace-nowrap px-6 py-3 text-xs font-semibold uppercase tracking-wider text-subtle', c.align === 'right' && 'text-right')}>
@@ -158,7 +175,8 @@ export function DataList<T>({ columns, rows, rowKey, onRowClick, loading, empty,
                   <tr
                     key={rowKey(row)}
                     onClick={clickable ? () => onRowClick(row) : undefined}
-                    className={cx('transition-colors', clickable && 'cursor-pointer hover:bg-surface-2')}
+                    // Instant hover, no colour transition: rows sliding under the pointer while scrolling would animate repaints.
+                    className={cx(clickable && 'cursor-pointer hover:bg-surface-2')}
                   >
                     {columns.map((c) => (
                       <td key={c.key} className={cx('px-6 py-4 text-fg-2', c.primary && 'font-semibold text-fg', c.align === 'right' && 'text-right', c.className)}>
@@ -169,7 +187,6 @@ export function DataList<T>({ columns, rows, rowKey, onRowClick, loading, empty,
                 ))}
           </tbody>
         </table>
-      </div>
-    </>
+    </div>
   );
 }

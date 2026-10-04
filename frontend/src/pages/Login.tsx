@@ -6,11 +6,12 @@ import { Alert, Button, Field, PasswordField } from '@/components/ui';
 import { ApiError } from '@/lib/api';
 import { authApi } from '@/lib/auth-api';
 import { useSubmit } from '@/lib/use-submit';
+import { currentHome } from '@/store/auth';
 import { rules, validate } from '@/lib/validate';
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const next = new URLSearchParams(useSearch()).get('next') || '/dashboard';
+  const next = new URLSearchParams(useSearch()).get('next');
   const [form, setForm] = useState({ email: '', password: '' });
   const { loading, error, setError, fields, setFields, clearField, run } = useSubmit();
 
@@ -36,8 +37,8 @@ export default function Login() {
         throw err;
       }
     });
-    if (r === 'otp') navigate(`/verify-otp?next=${encodeURIComponent(next)}`);
-    else if (r === 'ok') navigate(next, { replace: true });
+    if (r === 'otp') navigate(next ? `/verify-otp?next=${encodeURIComponent(next)}` : '/verify-otp');
+    else if (r === 'ok') navigate(next ?? currentHome(), { replace: true });
   }
 
   return (

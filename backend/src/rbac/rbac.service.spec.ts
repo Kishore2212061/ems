@@ -102,3 +102,15 @@ describe('RbacService.scopeFilter', () => {
     expect(rbac.scopeFilter(user(['ADMIN', 'GLOBAL_EVENT', 'not-an-id']), 'local_event.read', fields)).toBe(NO_ACCESS);
   });
 });
+
+describe('RbacService.withScope', () => {
+  it('never lets the scope overwrite the requested id (regression: spread merged _id keys)', () => {
+    const requested = new Types.ObjectId();
+    const scope = rbac.scopeFilter(user(['ADMIN', 'GLOBAL_EVENT', X]), 'global_event.read', { globalEventId: '_id' });
+    expect(rbac.withScope({ _id: requested }, scope)).toEqual({ $and: [{ _id: requested }, { _id: { $in: [new Types.ObjectId(X)] } }] });
+  });
+
+  it('leaves the filter untouched for org-wide access', () => {
+    expect(rbac.withScope({ status: 'DRAFT' }, {})).toEqual({ status: 'DRAFT' });
+  });
+});

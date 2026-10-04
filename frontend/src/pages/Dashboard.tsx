@@ -1,17 +1,7 @@
-import { useState } from 'react';
-import { useLocation } from 'wouter';
-import { CalendarIcon, LogOutIcon, MailIcon, ShieldIcon, TicketIcon } from '@/components/icons';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { Logo, Spinner } from '@/components/ui';
-import { authApi } from '@/lib/auth-api';
-import { ROLE_LABEL, useAuth } from '@/store/auth';
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
+import { AppHeader, initials } from '@/components/AppHeader';
+import { CalendarIcon, MailIcon, ShieldIcon, TicketIcon } from '@/components/icons';
+import { useMyNav } from '@/lib/nav';
+import { useAuth } from '@/store/auth';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -20,16 +10,8 @@ const greeting = () => {
 
 export default function Dashboard() {
   const user = useAuth((s) => s.user)!;
-  const [, navigate] = useLocation();
-  const [leaving, setLeaving] = useState(false);
-  const primary = user.roles[0];
+  const nav = useMyNav();
   const firstName = user.fullName.split(' ')[0];
-
-  async function logout() {
-    setLeaving(true);
-    await authApi.logout();
-    navigate('/login', { replace: true });
-  }
 
   const stats = [
     { label: 'Registrations', value: 0, icon: CalendarIcon, tint: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300' },
@@ -39,30 +21,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-dvh bg-page">
-      <header className="sticky top-0 z-10 border-b border-line bg-surface/95">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-5">
-          <Logo />
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-            <ThemeToggle />
-            <div className="hidden text-right sm:block">
-              <div className="text-sm font-semibold text-fg">{user.fullName}</div>
-              {primary && <div className="text-xs font-medium text-muted">{ROLE_LABEL[primary.role]}</div>}
-            </div>
-            <div className="grid size-9 shrink-0 place-items-center rounded-full sm:size-10 bg-gradient-to-br from-indigo-500 to-indigo-600 text-sm font-bold text-white shadow-md shadow-indigo-500/25 ring-2 ring-surface">
-              {initials(user.fullName)}
-            </div>
-            <button
-              onClick={logout}
-              disabled={leaving}
-              title="Sign out"
-              className="grid size-9 shrink-0 place-items-center rounded-xl text-muted sm:size-10 transition hover:bg-surface-2 hover:text-fg"
-            >
-              {leaving ? <Spinner /> : <LogOutIcon className="size-5" />}
-              <span className="sr-only">Sign out</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader nav={nav} />
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-10">
         {/* Hero */}
@@ -76,17 +35,6 @@ export default function Dashboard() {
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-indigo-100 sm:text-[15px]">
               Your NEC Events account is ready. Event registrations open soon — your tickets and QR passes will show up here.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {user.roles.map((r) => (
-                <span
-                  key={`${r.role}-${r.scopeId}`}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20"
-                >
-                  <span className="size-1.5 rounded-full bg-emerald-400" />
-                  {ROLE_LABEL[r.role]}
-                </span>
-              ))}
-            </div>
           </div>
         </section>
 

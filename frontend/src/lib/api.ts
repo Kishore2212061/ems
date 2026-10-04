@@ -32,12 +32,14 @@ export function clearSession() {
 
 async function raw<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // Files (poster uploads) go as the raw body with their own type; everything else is JSON.
+  const file = typeof Blob !== 'undefined' && body instanceof Blob ? body : null;
+  if (body !== undefined) headers['Content-Type'] = file ? file.type || 'application/octet-stream' : 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   let res: Response;
   try {
-    res = await fetch(`/api/v1${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    res = await fetch(`/api/v1${path}`, { method, headers, body: body === undefined ? undefined : file ?? JSON.stringify(body) });
   } catch {
     throw new ApiError(0, 'NETWORK', 'Cannot reach the server. Check your connection.');
   }
@@ -87,4 +89,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
+  put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+  del: <T = void>(path: string) => request<T>('DELETE', path),
+  upload: <T>(path: string, file: Blob) => request<T>('POST', path, file),
 };

@@ -1,5 +1,6 @@
 import { useAuth, type OtpChallenge, type SessionPayload } from '@/store/auth';
 import { api, applySession, clearSession } from './api';
+import { clearQueryCache } from './query';
 
 type LoginResult = SessionPayload | OtpChallenge;
 
@@ -37,6 +38,7 @@ export const authApi = {
       await api.post('/auth/logout');
     } finally {
       clearSession();
+      clearQueryCache();
     }
   },
 };
