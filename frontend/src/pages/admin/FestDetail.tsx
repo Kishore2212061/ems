@@ -19,7 +19,7 @@ import { FestEvents } from './FestEvents';
 import { AUDIT_TEXT, DepartmentPicker, useScopeOptions } from './shared';
 
 type Tab = 'events' | 'details' | 'departments' | 'activity';
-type Action = 'publish' | 'complete' | 'reactivate' | 'suspend' | 'clone' | null;
+type Action = 'publish' | 'complete' | 'reactivate' | 'suspend' | 'clone' | 'cancel' | null;
 
 const MISSING: Record<string, string> = { departments: 'at least one department', startsAt: 'a start date', endsAt: 'an end date', events: 'at least one published event' };
 
@@ -63,6 +63,7 @@ export default function FestDetail() {
   const [tab, setTab] = useState<Tab>(can(user, 'local_event.read') ? 'events' : 'details');
   const [action, setAction] = useState<Action>(null);
   const [reason, setReason] = useState('');
+  const [typed, setTyped] = useState('');
   const [cloneYear, setCloneYear] = useState('');
   const [deptIds, setDeptIds] = useState<string[] | null>(null);
   const save = useSubmit();
@@ -146,6 +147,11 @@ export default function FestDetail() {
             {canPublish && (f.status === 'PUBLISHED' || f.status === 'SUSPENDED') && (
               <Button size="sm" block={false} variant="secondary" onClick={() => setAction('complete')}>
                 Mark completed
+              </Button>
+            )}
+            {isSuperAdmin(user) && (f.status === 'DRAFT' || f.status === 'PUBLISHED' || f.status === 'SUSPENDED') && (
+              <Button size="sm" block={false} variant="ghost" className="text-red-600 hover:text-red-700 dark:text-red-400" onClick={() => { setReason(''); setTyped(''); setAction('cancel'); }}>
+                Cancel fest
               </Button>
             )}
           </>
@@ -297,6 +303,43 @@ export default function FestDetail() {
         }
       >
         <TextareaField label="Reason" rows={3} maxLength={300} placeholder="e.g. Venue maintenance — back on Monday" value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Dialog>
+      <Dialog
+        open={action === 'cancel'}
+        onClose={() => setAction(null)}
+        size="sm"
+        title={`Cancel ${f.name}?`}
+        description="Every event in this fest is cancelled: registrations end, tickets stop working, and every paid entry is refunded (online automatically; cash listed for the desk). This can't be undone."
+        footer={
+          <>
+            <Button size="sm" block={false} variant="secondary" onClick={() => setAction(null)}>Keep the fest</Button>
+            <Button
+              size="sm"
+              block={false}
+              variant="danger"
+              disabled={reason.trim().length < 3 || typed.trim() !== f.name}
+              onClick={async () => {
+                try {
+                  const out = await festApi.cancel(f.id, reason.trim());
+                  setQueryData(`admin:fest:${f.id}`, out);
+                  invalidate('admin:events:');
+                  invalidate('admin:fests');
+                  toast.success(`Fest cancelled: ${out.eventsCancelled} events cancelled, refunds started`);
+                  setAction(null);
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              Cancel fest
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <TextareaField label="Reason (shown to participants)" rows={3} maxLength={300} placeholder="e.g. Cyclone warning: the college is closed" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Field label={`Type "${f.name}" to confirm`} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+        </div>
       </Dialog>
       <Dialog
         open={action === 'clone'}

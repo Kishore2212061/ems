@@ -773,6 +773,19 @@ Index `{local_event_id:1, scanned_at:-1}`, `{ticket_id:1}`.
 
 **Goal:** participant refund requests with approval, and automatic mass refunds when an event is cancelled.
 
+> ### ✅ Status: DONE (2026-10-04)
+> | Area | Result |
+> |---|---|
+> | Backend | `refunds` (one per gateway payment or cash order: the unique `key` makes double payouts impossible) with a state machine REQUESTED → QUEUED → PROCESSING → SUCCEEDED / FAILED, REJECTED, and MANUAL_PENDING → MANUAL_DONE for cash. Leader requests (paid, confirmed, nobody checked in, until `REFUND_WINDOW_HOURS`=24 before the start); finance approves (registration ends: seat back, tickets void; refund job queued) or declines with a note (the leader may ask again). **Cancelling an event** queues a job that builds one `refund_batch` with a refund per paid order (online automatic, cash for the desk) and marks the registrations cancelled; **cancelling a fest** (Super Admin) cancels every event in it. Refund jobs: process-wide limiter (≤ 5/s), "already refunded" on retry counts as success, gateway refusals don't retry; low balance pauses the batch, **Resume** re-queues its failures; `refund.processed` / `refund.failed` webhooks finalise. Module 5's late/duplicate-payment refunds now use the same path. |
+> | Frontend | Registration page: refund tracker (Requested → Approved → Sent → Back to your account; cancelled-event refunds skip approval; cash: "collect at the desk") and **Request a refund** with a reason. Admin Payments page → **Orders · Refunds · Fees & GST** tabs; Refunds: batches with progress bars + Resume, "To decide / Cash to return / Failed / All" queue, decide/hand-back dialog. Fest page: **Cancel fest** (Super Admin) with reason + type-the-name confirm. |
+> | Tests | Backend **218** (+9: request → approve → seat/tickets/refund once + retry safety, request rules (unpaid, member, used ticket, window, free), reject + ask again, approval scope, cancelled event with online + cash + unpaid, low balance pause + resume, fest cancel, bank failure webhook, index plans). Frontend **76** (+2 refund panel). |
+> | Bundle | Initial JS 77.2 KB; registration page 5.6 KB, Payments page (with refunds) 4.4 KB, fest page 4.8 KB. **CSS 15.0 / 15 KB: at the limit.** |
+>
+> **Decisions / deferred**
+> - **Full refunds only** (no non-refundable platform fee yet); a percentage policy can be added to fee settings later.
+> - **Step-up OTP for cancelling** deferred: cancelling needs the reason + typing the event/fest name.
+> - Refunds are approved by finance roles (FINANCE, Super Admin); department admins see statuses but don't approve money going out.
+
 ### 9.1 Data model
 | Collection | Key fields |
 |---|---|

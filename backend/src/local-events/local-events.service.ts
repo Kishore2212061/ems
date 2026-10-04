@@ -5,7 +5,8 @@ import { AuditService } from '../audit/audit.service';
 import { Errors } from '../common/app-exception';
 import type { AuthUser } from '../common/decorators';
 import { slugify } from '../common/util';
-import { GLOBAL_EVENT_MODEL, GlobalEvent, PUBLIC_STATUSES } from '../global-events/global-event.schema';
+import { GLOBAL_EVENT_MODEL, GlobalEvent, PUBLIC_STATUSES, toFestDetail } from '../global-events/global-event.schema';
+import { JobsService } from '../jobs/jobs.service';
 import { MediaService } from '../media/media.service';
 import { RbacService } from '../rbac/rbac.service';
 import { REGISTRATION_MODEL, type Registration } from '../registrations/registration.schema';
@@ -77,6 +78,7 @@ export class LocalEventsService {
     private readonly rbac: RbacService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
+    private readonly jobs: JobsService,
   ) {}
 
   // ── public ────────────────────────────────────────────────────────────────
@@ -371,7 +373,29 @@ export class LocalEventsService {
     );
     await this.regs.updateMany({ local_event_id: id, active: true }, { $set: { active: false } });
     await this.tickets.updateMany({ local_event_id: id, status: { $in: ['ACTIVE', 'PAYMENT_PENDING'] } }, { $set: { status: 'VOID', void_reason: `Event cancelled: ${reason}` } });
+    // Paid entries get their money back: a refund batch built by a job (the request returns now).
+    await this.jobs.enqueue('refunds.event_cancelled', { eventId: String(id), reason, by: ctx.user.id }, { idempotencyKey: `event-cancelled:${id}` });
     return out;
+  }
+
+  /**
+   * Super Admin: call off a whole fest. Every event in it is cancelled the same way as one by one
+   * (registrants freed, tickets void, refund batches started); the fest itself becomes CANCELLED.
+   */
+  async cancelFest(festId: Types.ObjectId, reason: string, ctx: Ctx) {
+    this.rbac.assertCan(ctx.user, 'global_event.cancel', { globalEventId: festId });
+    const fest = await this.fests
+      .findOneAndUpdate({ _id: festId, status: { $in: ['DRAFT', 'PUBLISHED', 'SUSPENDED'] } }, { $set: { status: 'CANCELLED', suspend_reason: reason }, $inc: { version: 1 } }, { new: true })
+      .lean();
+    if (!fest) {
+      const cur = await this.fests.findById(festId).select('status').lean();
+      if (!cur) throw Errors.notFound('Fest');
+      throw Errors.conflict(cur.status === 'CANCELLED' ? 'ALREADY_CANCELLED' : 'INVALID_TRANSITION', `This fest is already ${cur.status.toLowerCase()}`);
+    }
+    const live = await this.events.find({ global_event_id: festId, status: { $in: ['DRAFT', 'PUBLISHED', 'SUSPENDED'] } }).select('_id').lean();
+    for (const e of live) await this.cancel(e._id, `Fest cancelled: ${reason}`, ctx);
+    await this.audit.record({ actorId: ctx.user.id, action: 'global_event.cancelled', entity: 'global_event', entityId: festId, after: { status: 'CANCELLED', reason }, meta: { events: live.length }, ip: ctx.ip });
+    return { ...toFestDetail(fest, true), eventsCancelled: live.length };
   }
 
   complete(id: Types.ObjectId, ctx: Ctx) {

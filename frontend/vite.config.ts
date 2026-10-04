@@ -28,5 +28,7 @@ export default defineConfig({
     setupFiles: ['src/test/setup.ts'],
     css: false,
     restoreMocks: true,
+    // Full runs start ~16 happy-dom environments in parallel; 5 s was too tight for the slowest form tests on CI-class machines.
+    testTimeout: 15_000,
   },
 });

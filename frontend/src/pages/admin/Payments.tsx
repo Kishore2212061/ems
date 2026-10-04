@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { DataList, EmptyState, StatTile, type Column } from '@/components/data';
 import { CardIcon } from '@/components/event-icons';
 import { AlertIcon, TicketIcon, WalletIcon } from '@/components/icons';
-import { Badge, Card, PageHeader } from '@/components/layout';
+import { Badge, Card, PageHeader, Tabs } from '@/components/layout';
+import { RefundsTab } from './RefundsTab';
 import { toast } from '@/components/toast';
 import { Alert, Button, Field, SelectField } from '@/components/ui';
 import { ApiError } from '@/lib/api';
@@ -115,6 +116,9 @@ export default function Payments() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canSee = can(user, 'order.read');
+  const canRefund = can(user, 'refund.approve');
+  const canFees = can(user, 'settings.manage');
+  const [tab, setTab] = useState<'orders' | 'refunds' | 'fees'>(canSee ? 'orders' : 'fees');
 
   const list = fests.data?.items ?? [];
   useEffect(() => {
@@ -144,15 +148,31 @@ export default function Payments() {
     <div className="space-y-6">
       <PageHeader title="Payments" description="Online and desk payments by fest, refunds, and fee settings." />
 
-      {canSee && (
+      <Tabs<'orders' | 'refunds' | 'fees'>
+        label="Payments"
+        value={tab}
+        onChange={setTab}
+        items={[
+          ...(canSee ? [{ value: 'orders' as const, label: 'Orders' }] : []),
+          ...(canRefund ? [{ value: 'refunds' as const, label: 'Refunds' }] : []),
+          ...(canFees ? [{ value: 'fees' as const, label: 'Fees & GST' }] : []),
+        ]}
+      />
+
+      {(tab === 'orders' || tab === 'refunds') && (
+        <SelectField label="Fest" className="sm:max-w-sm" value={festId} onChange={(e) => setFestId(e.target.value)}>
+          {list.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
+
+      {tab === 'refunds' && festId && <RefundsTab festId={festId} />}
+
+      {canSee && tab === 'orders' && (
         <>
-          <SelectField label="Fest" className="sm:max-w-sm" value={festId} onChange={(e) => setFestId(e.target.value)}>
-            {list.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </SelectField>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile label="Collected" value={totals ? rupees(totals.onlinePaise + totals.deskPaise) : '–'} icon={WalletIcon} tint="success" loading={loading && !totals} />
@@ -188,7 +208,7 @@ export default function Payments() {
         </>
       )}
 
-      {can(user, 'settings.manage') && <FeesCard />}
+      {canFees && tab === 'fees' && <FeesCard />}
     </div>
   );
 }

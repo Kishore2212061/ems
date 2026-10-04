@@ -91,6 +91,8 @@ const schema = z
     RAZORPAY_KEY_SECRET: z.string().optional(),
     RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+    /** Participants can ask for a refund until this long before their event starts. */
+    REFUND_WINDOW_HOURS: int(24),
     /** Gate check-in opens this long before an event starts. */
     CHECKIN_OPEN_BEFORE_MINUTES: int(120),
 

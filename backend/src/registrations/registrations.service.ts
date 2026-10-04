@@ -144,6 +144,11 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     return before;
   }
 
+  /** A refund was approved (or the event cancelled): end a paid registration too. Seat back, tickets void. */
+  endForRefund(regId: Id, reason: string, actorId: Id | null, session: ClientSession) {
+    return this.end({ _id: regId, status: 'CONFIRMED' }, { status: 'CANCELLED', cancel_reason: reason, cancelled_by: actorId, cancelled_at: new Date() }, session);
+  }
+
   private async me(userId: string): Promise<Me> {
     const u = await this.users.findById(userId).select('_id email full_name phone college status').lean<Me>();
     if (!u) throw Errors.unauthorized();

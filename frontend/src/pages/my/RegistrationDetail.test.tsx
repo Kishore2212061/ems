@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route, Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { payApi, regApi, type Registration } from '@/lib/ems-api';
+import { payApi, refundApi, regApi, type Registration } from '@/lib/ems-api';
 import { clearQueryCache } from '@/lib/query';
 import { useAuth } from '@/store/auth';
 import RegistrationDetail from './RegistrationDetail';
@@ -37,6 +37,9 @@ function mount() {
   );
 }
 
+beforeEach(() => {
+  vi.spyOn(refundApi, 'mine').mockResolvedValue({ items: [] });
+});
 afterEach(() => {
   vi.restoreAllMocks();
   clearQueryCache();

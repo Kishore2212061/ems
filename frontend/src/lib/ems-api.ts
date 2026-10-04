@@ -128,7 +128,7 @@ export interface EventQuery {
 // ── registrations (Module 4) ──
 export type RegistrationStatus = 'PAYMENT_PENDING' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED';
 /** NOT_REQUIRED = free · PENDING = online, not paid yet · DUE = pay at the desk · PAID */
-export type PaymentStatus = 'NOT_REQUIRED' | 'PENDING' | 'DUE' | 'PAID';
+export type PaymentStatus = 'NOT_REQUIRED' | 'PENDING' | 'DUE' | 'PAID' | 'REFUNDED';
 
 export interface RegistrationPayment {
   mode: 'NONE' | PaymentMode;
@@ -424,6 +424,53 @@ export const checkinApi = {
   summary: (eventId: string) => api.get<GateSummary>(`/checkins/${eventId}/summary`),
 };
 
+// ── refunds (Module 8) ──
+export type RefundStatus = 'REQUESTED' | 'REJECTED' | 'QUEUED' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'MANUAL_PENDING' | 'MANUAL_DONE';
+export interface RefundView {
+  id: string;
+  registrationCode: string;
+  orderCode: string;
+  mode: PaymentMode;
+  amountPaise: number;
+  source: 'REQUEST' | 'EVENT_CANCELLED' | 'LATE_PAYMENT' | 'DUPLICATE_PAYMENT';
+  reason: string | null;
+  status: RefundStatus;
+  failure: string | null;
+  note: string | null;
+  batchId: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  updatedAt: string;
+  eventName?: string | null;
+}
+export interface RefundBatchView {
+  id: string;
+  eventName: string;
+  reason: string;
+  status: 'RUNNING' | 'PAUSED' | 'COMPLETED';
+  total: number;
+  succeeded: number;
+  failed: number;
+  manual: number;
+  pausedReason: string | null;
+  createdAt: string;
+}
+
+export const refundApi = {
+  request: (regCode: string, reason: string) => api.post<RefundView>(`/registrations/${encodeURIComponent(regCode)}/refund-request`, { reason }),
+  mine: () => api.get<{ items: RefundView[] }>('/refunds/my'),
+};
+
+export const adminRefundApi = {
+  list: (q: { festId: string; status?: RefundStatus; cursor?: string }) =>
+    api.get<Page<RefundView> & { counts?: Partial<Record<RefundStatus, number>> }>(`/admin/refunds${qs(q)}`),
+  approve: (id: string) => api.post<RefundView>(`/admin/refunds/${id}/approve`),
+  reject: (id: string, note: string) => api.post<RefundView>(`/admin/refunds/${id}/reject`, { note }),
+  markPaid: (id: string, note?: string) => api.post<RefundView>(`/admin/refunds/${id}/mark-paid`, note ? { note } : {}),
+  batches: (festId: string) => api.get<{ items: RefundBatchView[] }>(`/admin/refund-batches${qs({ festId })}`),
+  resume: (id: string) => api.post<{ requeued: number }>(`/admin/refund-batches/${id}/resume`),
+};
+
 export const ticketApi = {
   get: (code: string) => api.get<TicketDetail>(`/tickets/${encodeURIComponent(code)}`),
   resend: (code: string) => api.post<{ sent: true }>(`/tickets/${encodeURIComponent(code)}/resend`),
@@ -462,6 +509,8 @@ export const festApi = {
   reactivate: (id: string) => api.post<FestDetail>(`/admin/global-events/${id}/reactivate`),
   complete: (id: string) => api.post<FestDetail>(`/admin/global-events/${id}/complete`),
   clone: (id: string, editionYear: number) => api.post<FestDetail>(`/admin/global-events/${id}/clone`, { editionYear }),
+  /** Super Admin: cancels every event in the fest and starts their refunds. */
+  cancel: (id: string, reason: string) => api.post<FestDetail & { eventsCancelled: number }>(`/admin/global-events/${id}/cancel`, { reason }),
 };
 
 export const mediaApi = {

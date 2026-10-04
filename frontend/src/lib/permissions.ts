@@ -7,7 +7,7 @@ import type { Role, User } from '@/store/auth';
 const MATRIX: Record<Role, readonly string[]> = {
   SUPER_ADMIN: ['*'],
   ADMIN: ['admin.access', 'global_event.read', 'global_event.update', 'user.read', 'user.invite', 'local_event.read', 'local_event.manage', 'local_event.publish', 'local_event.cancel', 'registration.read', 'registration.manage', 'order.collect_offline', 'checkin.scan'],
-  FINANCE: ['admin.access', 'global_event.read', 'order.read'],
+  FINANCE: ['admin.access', 'global_event.read', 'order.read', 'refund.approve'],
   SCANNER: ['scan.access', 'checkin.scan', 'order.collect_offline'],
   PARTICIPANT: [],
 };
@@ -32,7 +32,9 @@ export type UiPermission =
   | 'order.read'
   | 'order.collect_offline'
   | 'settings.manage'
-  | 'checkin.scan';
+  | 'checkin.scan'
+  | 'refund.approve'
+  | 'global_event.cancel';
 
 const grants = (role: Role, p: UiPermission) => MATRIX[role].includes('*') || MATRIX[role].includes(p);
 

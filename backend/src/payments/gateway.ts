@@ -1,7 +1,23 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { env } from '../config/env';
 
-export class GatewayError extends Error {}
+/** status 0 = network (retry later); 4xx = the gateway refused (retrying won't help). */
+export class GatewayError extends Error {
+  constructor(
+    message: string,
+    readonly status = 0,
+  ) {
+    super(message);
+  }
+  /** Razorpay says the merchant balance can't cover refunds right now. */
+  get insufficientFunds() {
+    return /insufficient|balance/i.test(this.message);
+  }
+  /** A retried refund that already went through. */
+  get alreadyRefunded() {
+    return /fully refunded|already been refunded/i.test(this.message);
+  }
+}
 
 /** What the rest of the app needs from a payment gateway. Amounts are integer paise. */
 export interface PaymentGateway {
@@ -13,7 +29,7 @@ export interface PaymentGateway {
   verifyPayment(orderId: string, paymentId: string, signature: string): boolean;
   /** Webhook signature: HMAC-SHA256(raw body, webhook secret). */
   verifyWebhook(rawBody: Buffer | string, signature: string): boolean;
-  refund(paymentId: string, amountPaise: number): Promise<{ id: string }>;
+  refund(paymentId: string, amountPaise: number, receipt?: string): Promise<{ id: string }>;
 }
 
 export const PAYMENT_GATEWAY = Symbol('PAYMENT_GATEWAY');
@@ -52,7 +68,7 @@ export class RazorpayGateway implements PaymentGateway {
       throw new GatewayError(`Razorpay unreachable: ${(e as Error).message}`);
     }
     const data: any = await res.json().catch(() => ({}));
-    if (!res.ok) throw new GatewayError(data?.error?.description ?? `Razorpay HTTP ${res.status}`);
+    if (!res.ok) throw new GatewayError(data?.error?.description ?? `Razorpay HTTP ${res.status}`, res.status);
     return data as T;
   }
 
@@ -70,8 +86,8 @@ export class RazorpayGateway implements PaymentGateway {
     return sameHex(hmac(this.webhookSecret, rawBody), signature);
   }
 
-  refund(paymentId: string, amountPaise: number) {
-    return this.call<{ id: string }>(`/payments/${encodeURIComponent(paymentId)}/refund`, { amount: amountPaise, speed: 'normal' }, false);
+  refund(paymentId: string, amountPaise: number, receipt?: string) {
+    return this.call<{ id: string }>(`/payments/${encodeURIComponent(paymentId)}/refund`, { amount: amountPaise, speed: 'normal', ...(receipt && { receipt }) }, false);
   }
 }
 
@@ -86,6 +102,8 @@ export class MockGateway implements PaymentGateway {
   private readonly keySecret = randomBytes(24).toString('hex');
   private readonly webhookSecret = randomBytes(24).toString('hex');
   readonly refunds: { paymentId: string; amountPaise: number }[] = [];
+  /** Tests: make the next refund fail with this gateway message. */
+  failNextRefund: string | null = null;
 
   async createOrder() {
     return { id: `order_sim_${randomBytes(7).toString('hex')}` };
@@ -97,6 +115,12 @@ export class MockGateway implements PaymentGateway {
     return sameHex(hmac(this.webhookSecret, rawBody), signature);
   }
   async refund(paymentId: string, amountPaise: number) {
+    if (this.failNextRefund) {
+      const msg = this.failNextRefund;
+      this.failNextRefund = null;
+      throw new GatewayError(msg, 400);
+    }
+    if (this.refunds.some((r) => r.paymentId === paymentId)) throw new GatewayError('The payment has been fully refunded already', 400);
     this.refunds.push({ paymentId, amountPaise });
     return { id: `rfnd_sim_${randomBytes(7).toString('hex')}` };
   }

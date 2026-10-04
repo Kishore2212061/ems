@@ -92,6 +92,12 @@ export class AdminLocalEventsController {
     return this.events.complete(id, ctx(u, req));
   }
 
+  @RequirePermission('global_event.cancel')
+  @Post('global-events/:festId/cancel')
+  cancelFest(@Param('festId', ObjectIdPipe) festId: Id, @Body(new ZodPipe(ReasonDto)) dto: z.infer<typeof ReasonDto>, @CurrentUser() u: AuthUser, @Req() req: FastifyRequest) {
+    return this.events.cancelFest(festId, dto.reason, ctx(u, req));
+  }
+
   @RequirePermission('local_event.cancel')
   @Post('local-events/:id/cancel')
   cancel(@Param('id', ObjectIdPipe) id: Id, @Body(new ZodPipe(ReasonDto)) dto: z.infer<typeof ReasonDto>, @CurrentUser() u: AuthUser, @Req() req: FastifyRequest) {

@@ -123,3 +123,24 @@ export function registrationCancelledEmail(r: { name: string; event: string; cod
     text: `The registration ${r.code} for ${r.event} was cancelled by ${r.by}${r.reason ? `: ${r.reason}` : '.'}\n\nBrowse events: ${r.link}`,
   };
 }
+
+const REFUND_COPY = {
+  started: { title: 'Refund on its way', line: 'Your refund has been started. Banks usually credit it within 5–7 working days.' },
+  done: { title: 'Refund processed', line: 'Your refund has been processed by the payment gateway. Your bank will show it shortly.' },
+  manual: { title: 'Refund at the registration desk', line: 'You paid in cash, so the organisers will hand your money back at the registration desk.' },
+  rejected: { title: 'Refund request declined', line: 'Your refund request was declined.' },
+};
+
+export function refundEmail(r: { name: string; event: string; code: string; amount: string; kind: keyof typeof REFUND_COPY; note: string | null; link: string }) {
+  const c = REFUND_COPY[r.kind];
+  const html = layout(
+    c.title,
+    `${p(`Hi ${esc(r.name)}, ${esc(c.line)}`)}${facts([
+      ['Event', r.event],
+      ['Registration', r.code],
+      ['Amount', r.amount],
+      ...(r.note ? [['Note', r.note] as [string, string]] : []),
+    ])}${button(r.link, 'View registration')}`,
+  );
+  return { subject: `${c.title}: ${r.event} (${r.amount})`, html, text: `${c.line}\n\nEvent: ${r.event}\nRegistration: ${r.code}\nAmount: ${r.amount}${r.note ? `\nNote: ${r.note}` : ''}\n\n${r.link}` };
+}

@@ -19,6 +19,7 @@ import { refreshAfterRegistrationChange } from '@/lib/my-registrations';
 import { useMyNav } from '@/lib/nav';
 import { setQueryData, useQuery } from '@/lib/query';
 import { useAuth } from '@/store/auth';
+import { RefundPanel } from './RefundPanel';
 
 /** Re-renders every second while `on` (the hold countdown). */
 function useNow(on: boolean) {
@@ -293,6 +294,8 @@ export default function RegistrationDetail() {
                 refreshAfterRegistrationChange();
               }}
             />
+
+            <RefundPanel reg={r} onChanged={() => refetch()} />
 
             <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
               <h2 className="font-bold text-fg">{r.members.length > 1 ? (r.teamName ? `Team ${r.teamName}` : 'Team') : 'Participant'}</h2>

@@ -19,10 +19,10 @@ import { USER_MODEL, User } from '../users/user.schema';
 import { calculateBreakdown } from './fees';
 import { GatewayError, MockGateway, PAYMENT_GATEWAY, type PaymentGateway } from './gateway';
 import { ORDER_MODEL, Order, WEBHOOK_EVENT_MODEL, WebhookEvent } from './order.schema';
+import { RefundsService } from './refunds.service';
 import type { OrderListQuery, VerifyDto } from './payments.dto';
 
 type Id = Types.ObjectId;
-const REFUND_JOB = 'payments.refund';
 const ORDER_SCOPE = { globalEventId: 'global_event_id', departmentId: 'department_id', localEventId: 'local_event_id' } as const;
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => `ORD-${Array.from({ length: 8 }, () => ALPHABET[randomInt(ALPHABET.length)]).join('')}`;
@@ -65,9 +65,8 @@ export class PaymentsService {
     private readonly mail: MailService,
     private readonly jobs: JobsService,
     private readonly tickets: TicketsService,
-  ) {
-    jobs.register<{ orderId: string; paymentId: string; amountPaise: number }>(REFUND_JOB, (p) => this.runRefund(p));
-  }
+    private readonly refunds: RefundsService,
+  ) {}
 
   private gw(): PaymentGateway {
     if (!this.gateway) throw new AppException(HttpStatus.SERVICE_UNAVAILABLE, 'PAYMENTS_UNAVAILABLE', 'Online payment is not available right now. Please try again later.');
@@ -196,6 +195,8 @@ export class PaymentsService {
     const payment = body?.payload?.payment?.entity;
     if ((body.event === 'payment.captured' || body.event === 'order.paid') && payment?.order_id) {
       await this.finalise(String(payment.order_id), String(payment.id), 'webhook', Number(payment.amount));
+    } else if (body.event === 'refund.processed' || body.event === 'refund.failed') {
+      await this.refunds.onGatewayRefund(body?.payload?.refund?.entity, body.event);
     } else if (body.event === 'payment.failed' && payment?.order_id) {
       // The person can retry on the same order until the hold ends; just keep the reason.
       await this.orders.updateOne({ gateway_order_id: String(payment.order_id), status: 'CREATED' }, { $set: { last_error: String(payment.error_description ?? 'Payment failed').slice(0, 300) } });
@@ -220,7 +221,7 @@ export class PaymentsService {
         const existing = await this.orders.findOne({ gateway_order_id: gatewayOrderId }).session(session).lean();
         if (existing?.status === 'PAID' && existing.gateway_payment_id !== paymentId) {
           // Paid twice (e.g. a bank app retried): give the extra payment back.
-          await this.jobs.enqueue(REFUND_JOB, { orderId: String(existing._id), paymentId, amountPaise: amountPaise ?? existing.amount_paise }, { session, idempotencyKey: `refund:${paymentId}` });
+          await this.refunds.autoRefund(existing, 'DUPLICATE_PAYMENT', paymentId, amountPaise ?? existing.amount_paise, session);
           return { kind: 'duplicate' as const, order: existing };
         }
         return { kind: existing ? ('already' as const) : ('unknown' as const), order: existing };
@@ -228,8 +229,7 @@ export class PaymentsService {
       if (amountPaise !== undefined && amountPaise !== order.amount_paise) this.logger.error(`order ${order.code}: gateway amount ${amountPaise} ≠ ${order.amount_paise}`);
       const { reg, seated } = await this.registrations.confirmPaid(order.registration_id, session);
       if (!seated) {
-        await this.orders.updateOne({ _id: order._id }, { $set: { refund_status: 'PENDING' } }, { session });
-        await this.jobs.enqueue(REFUND_JOB, { orderId: String(order._id), paymentId, amountPaise: order.amount_paise }, { session, idempotencyKey: `refund:${paymentId}` });
+        await this.refunds.autoRefund(order, 'LATE_PAYMENT', paymentId, order.amount_paise, session);
         const leader = reg?.members.find((m) => m.leader);
         const ev = await this.events.findById(order.local_event_id).select('name').session(session).lean();
         if (leader) {
@@ -256,12 +256,6 @@ export class PaymentsService {
       return { kind: seated ? ('paid' as const) : ('refund' as const), order };
     });
     return outcome;
-  }
-
-  private async runRefund(p: { orderId: string; paymentId: string; amountPaise: number }) {
-    const refund = await this.gw().refund(p.paymentId, p.amountPaise);
-    await this.orders.updateOne({ _id: new Types.ObjectId(p.orderId) }, { $set: { refund_status: 'DONE', refund_id: refund.id } });
-    this.logger.log(`refunded ${p.paymentId} (${p.amountPaise} paise) → ${refund.id}`);
   }
 
   // ── registration desk ─────────────────────────────────────────────────────

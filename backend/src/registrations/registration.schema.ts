@@ -10,7 +10,7 @@ export const ACTIVE_STATUSES: RegistrationStatus[] = ['PAYMENT_PENDING', 'CONFIR
  * NOT_REQUIRED = free · PENDING = online payment not made yet (seat held) ·
  * DUE = pay at the registration desk (seat confirmed) · PAID = settled.
  */
-export const PAYMENT_STATUS = ['NOT_REQUIRED', 'PENDING', 'DUE', 'PAID'] as const;
+export const PAYMENT_STATUS = ['NOT_REQUIRED', 'PENDING', 'DUE', 'PAID', 'REFUNDED'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUS)[number];
 export type PayMode = 'NONE' | 'ONLINE' | 'OFFLINE';
 
