@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'wouter';
+import { Link, useParams } from 'wouter';
 import { DataList, EmptyState, StatTile, type Column } from '@/components/data';
 import { XIcon } from '@/components/event-icons';
-import { CalendarIcon, SearchIcon, TicketIcon, UsersIcon, WalletIcon } from '@/components/icons';
+import { CalendarIcon, ScanIcon, SearchIcon, TicketIcon, UsersIcon, WalletIcon } from '@/components/icons';
 import { Badge, Card, PageHeader, Tabs, type Tone } from '@/components/layout';
 import { Dialog } from '@/components/overlay';
 import { toast } from '@/components/toast';
@@ -123,6 +123,13 @@ export default function EventRegistrations() {
         back={{ href: `/admin/events/${festId}/local/${eventId}`, label: e?.name ?? 'Event' }}
         title="Registrations"
         description={e ? `${e.name} · ${fmtWhen(e.startsAt, e.endsAt)}` : undefined}
+        actions={
+          e && canOnEvent(user, 'checkin.scan', festId, e.department?.id ?? null) && e.status !== 'DRAFT' ? (
+            <Link href={`/scan/${eventId}`} className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500">
+              <ScanIcon className="size-4" /> Check-in
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">

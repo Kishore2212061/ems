@@ -91,6 +91,9 @@ const schema = z
     RAZORPAY_KEY_SECRET: z.string().optional(),
     RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+    /** Gate check-in opens this long before an event starts. */
+    CHECKIN_OPEN_BEFORE_MINUTES: int(120),
+
     // Ticket QR signing (HMAC). Unset secret → derived from JWT_ACCESS_SECRET. Rotate: new KID + SECRET, old pair into QR_PREVIOUS_KEYS (kid:secret,…).
     QR_SIGNING_KID: z.string().regex(/^[A-Za-z0-9_-]{1,16}$/).default('k1'),
     QR_SIGNING_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(32).optional()),

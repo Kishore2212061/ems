@@ -381,6 +381,49 @@ export const regApi = {
   cancel: (code: string, reason?: string) => api.post<Registration>(`/registrations/${encodeURIComponent(code)}/cancel`, reason ? { reason } : {}),
 };
 
+// ── gate check-in (Module 7) ──
+export type ScanResult = 'OK' | 'PAYMENT_DUE' | 'ALREADY_USED' | 'WRONG_EVENT' | 'INVALID_TICKET' | 'VOID_TICKET' | 'NOT_YET_OPEN';
+export interface ScanOutcome {
+  result: ScanResult;
+  message: string;
+  holder?: { name: string; ticketCode: string; registrationCode: string; leader: boolean };
+  amountPaise?: number;
+  usedAt?: string | null;
+  opensAt?: string;
+}
+export interface GateEvent {
+  id: string;
+  name: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  venue: string | null;
+  departmentCode: string | null;
+  checkedIn: number;
+  expected: number;
+}
+export interface GateSummary {
+  event: { id: string; name: string; startsAt: string | null; endsAt: string | null; venue: string | null };
+  checkedIn: number;
+  expected: number;
+  paymentDue: number;
+  shift: { scans: number; admitted: number; cashPaise: number; cashCount: number };
+}
+export interface LookupHit {
+  code: string;
+  holder: string;
+  status: TicketStatus;
+  registrationCode: string;
+  leader: boolean;
+  usedAt: string | null;
+}
+
+export const checkinApi = {
+  events: () => api.get<{ fests: { id: string; name: string; events: GateEvent[] }[] }>('/checkins/events'),
+  scan: (eventId: string, b: { qr?: string; code?: string; deviceId: string }) => api.post<ScanOutcome>(`/checkins/${eventId}/scan`, b),
+  lookup: (eventId: string, q: string) => api.get<{ items: LookupHit[] }>(`/checkins/${eventId}/lookup?q=${encodeURIComponent(q)}`),
+  summary: (eventId: string) => api.get<GateSummary>(`/checkins/${eventId}/summary`),
+};
+
 export const ticketApi = {
   get: (code: string) => api.get<TicketDetail>(`/tickets/${encodeURIComponent(code)}`),
   resend: (code: string) => api.post<{ sent: true }>(`/tickets/${encodeURIComponent(code)}/resend`),

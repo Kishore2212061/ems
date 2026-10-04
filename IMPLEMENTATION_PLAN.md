@@ -705,6 +705,20 @@ Indexes: `code` unique, `jti` unique, `{local_event_id:1, status:1}`, `{user_id:
 
 **Goal:** fast, offline-tolerant gate scanning on volunteers' phones, with cash collection and geofencing.
 
+> ### ✅ Status: DONE (2026-10-04) · inside the main web app (decision: no separate PWA)
+> | Area | Result |
+> |---|---|
+> | Backend | `check_ins` log + `POST /checkins/:eventId/scan` (QR or typed code): signature check in memory, then one conditional `ACTIVE → USED` update (two phones scanning one QR → one `OK`, one `ALREADY_USED`) and one log insert; stable results `OK`, `PAYMENT_DUE` (+ amount), `ALREADY_USED` (+ time), `WRONG_EVENT` (+ the right event), `INVALID_TICKET`, `VOID_TICKET`, `NOT_YET_OPEN` (check-in opens `CHECKIN_OPEN_BEFORE_MINUTES`=120 before the start). `GET /checkins/events` (gates I can run, with counts), `GET …/lookup?q=` (ticket/registration code, email, or the leader's phone), `GET …/summary` (event counts + my shift: scans, admitted, cash taken today). Scope: scanners for their fest, department admins for their department's events. |
+> | Frontend | `/scan`: pick a gate (event list with live "12/40 in"). `/scan/:eventId`: always-dark page, camera with a framing guide, **full-screen colour flash** (green admitted / amber payment due or already used / red refused) with the holder's name and vibration; valid entries clear after 1.5 s, refusals wait for "Next"; **"₹X received: admit"** records the desk payment and admits in one tap; manual entry/lookup with Admit buttons; offline banner; shift line. Admin event Registrations page links to its gate. |
+> | QR decoding | Native `BarcodeDetector` where available (Android Chrome, 0 KB); otherwise `qr-scanner`'s worker decoder (MIT, 5.4 + 10.0 KB gz, lazy). jsQR was tried and dropped (45 KB gz, over the 30 KB lazy budget). Verified in real Chrome (no BarcodeDetector → worker path): our server-made ticket PNG decodes to the exact signed token. |
+> | Tests | Backend **209** (+7: admit once + concurrent double scan, forged/edited QR, typed code, wrong event, void, not yet open, pay at the gate then admit, scope (other fest 404, other department 404, participant 403), lookup by email/phone/registration, summary + shift cash, index plans). Frontend **74** (+3: admit flash + auto-clear, collect-and-admit, refusals wait for Next + lookup). |
+> | Bundle | Initial JS 77.2 KB; scanner page 3.9 KB, gate list 1.4 KB; decoder 15.4 KB only on phones without BarcodeDetector. CSS 14.9 / 15 KB (at the limit: next UI work must trim or the budget be revisited). |
+>
+> **Decisions / deferred**
+> - **No offline queue:** admitting people offline means skipping the "already used" check, which is exactly how screenshot sharing is stopped. The scanner says clearly that it's offline instead. Revisit with an explicit "trusted offline" mode if gates have no signal.
+> - **No geofence:** events have a venue name but no coordinates yet.
+> - One permission, `checkin.scan`, covers scanning and manual lookup (scanners + department admins in scope).
+
 ### 8.1 Data model — `check_ins`
 `{ ticket_id, local_event_id, operator_id, device_id, scanned_at, synced_at, result, lat, lng, distance_m, offline: bool }`
 Index `{local_event_id:1, scanned_at:-1}`, `{ticket_id:1}`.

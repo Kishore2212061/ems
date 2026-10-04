@@ -24,6 +24,8 @@ export interface Ticket {
   issued_at: Date;
   used_at: Date | null;
   used_by: Types.ObjectId | null;
+  /** Which scanner admitted it (shown when a copy is scanned again). */
+  used_device?: string | null;
   void_reason: string | null;
 }
 
@@ -46,6 +48,7 @@ export const TicketSchema = new Schema<Ticket>(
     issued_at: { type: Date, default: () => new Date() },
     used_at: { type: Date, default: null },
     used_by: { type: Schema.Types.ObjectId, default: null },
+    used_device: { type: String, default: null },
     void_reason: { type: String, default: null },
   },
   { collection: 'tickets', versionKey: false },

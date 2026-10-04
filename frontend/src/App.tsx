@@ -28,6 +28,7 @@ const VerifyTicket = lazy(() => import('@/pages/public/VerifyTicket'));
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'));
 // Scanner
 const ScanHome = lazy(() => import('@/pages/scan/ScanHome'));
+const ScanEvent = lazy(() => import('@/pages/scan/ScanEvent'));
 // Component gallery for design QA. Dev builds only — the branch (and its chunk) is removed in production.
 const UiKit = import.meta.env.DEV ? lazy(() => import('@/pages/UiKit')) : null;
 
@@ -102,6 +103,7 @@ const R = {
   ticket: authed(Ticket),
   admin: authed(AdminLayout),
   scan: authed(ScanHome),
+  scanEvent: authed(ScanEvent),
 };
 
 export default function App() {
@@ -134,6 +136,7 @@ export default function App() {
         <Route path="/verify/:code" component={VerifyTicket} />
         <Route path="/admin/*?" component={R.admin} />
         <Route path="/scan" component={R.scan} />
+        <Route path="/scan/:eventId" component={R.scanEvent} />
 
         {UiKit && <Route path="/__ui" component={UiKit} />}
         <Route component={NotFound} />

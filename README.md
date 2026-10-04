@@ -15,6 +15,7 @@ Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.m
 | 4 | Registrations: day-wise schedule, teams, no time clashes, seat holds, organiser view | ✅ |
 | 5 | Payments: Razorpay checkout + webhook, fee/GST engine, pay at the desk, refunds on late payment, finance view | ✅ |
 | 6 | Tickets: one per member, signed QR in the app and in emails, full-screen pass, public verify | ✅ |
+| 7 | Gate check-in in the web app: camera QR scanning, payment at the gate, manual lookup, live counts | ✅ |
 
 ## Architecture (Module 1)
 
@@ -71,11 +72,11 @@ cd backend && npm run build && npm run seed:live
 ### Tests
 
 ```bash
-cd backend && npm test      # 202 e2e/unit tests; uses a local mongod if installed, else downloads one
+cd backend && npm test      # 209 e2e/unit tests; uses a local mongod if installed, else downloads one
 ```
 
 ```bash
-cd frontend && npm test && npm run build && npm run check:bundle   # 71 tests + gzip budget gate
+cd frontend && npm test && npm run build && npm run check:bundle   # 74 tests + gzip budget gate
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.

@@ -58,7 +58,8 @@ describe('RbacService.can', () => {
     const u = user(['ADMIN', 'DEPARTMENT', CSE], ['SCANNER', 'LOCAL_EVENT', BLIND], ['PARTICIPANT', 'ORG', null]);
     expect(rbac.can(u, 'local_event.manage', { departmentId: CSE })).toBe(true);
     expect(rbac.can(u, 'checkin.scan', { localEventId: BLIND })).toBe(true);
-    expect(rbac.can(u, 'checkin.scan', { localEventId: id(), departmentId: CSE })).toBe(false); // admin role lacks checkin.scan
+    expect(rbac.can(u, 'checkin.scan', { localEventId: id(), departmentId: CSE })).toBe(true); // department admins can run their own gates
+    expect(rbac.can(u, 'checkin.scan', { localEventId: id(), departmentId: id() })).toBe(false); // …not other departments'
   });
 
   it('assertCan throws a 403 naming the permission', () => {

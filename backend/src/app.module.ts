@@ -13,6 +13,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { LocalEventsModule } from './local-events/local-events.module';
 import { MailModule } from './mail/mail.module';
 import { MediaModule } from './media/media.module';
+import { CheckinsModule } from './checkins/checkins.module';
 import { FeesModule } from './payments/fee-settings.service';
 import { PaymentsModule } from './payments/payments.module';
 import { RbacModule } from './rbac/rbac.module';
@@ -43,6 +44,7 @@ import { UsersModule } from './users/users.module';
     FeesModule,
     RegistrationsModule,
     PaymentsModule,
+    CheckinsModule,
     UsersModule,
   ],
   controllers: [HealthController],
