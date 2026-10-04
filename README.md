@@ -17,6 +17,7 @@ Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.m
 | 6 | Tickets: one per member, signed QR in the app and in emails, full-screen pass, public verify | ✅ |
 | 7 | Gate check-in in the web app: camera QR scanning, payment at the gate, manual lookup, live counts | ✅ |
 | 8 | Refunds: requests + finance approval, automatic refunds when an event or fest is cancelled, cash hand-backs, batch progress | ✅ |
+| 9 | Analytics: live dashboard (KPIs vs last edition, per-day, departments, top events, colleges), CSV exports | ✅ |
 
 ## Architecture (Module 1)
 
@@ -73,11 +74,11 @@ cd backend && npm run build && npm run seed:live
 ### Tests
 
 ```bash
-cd backend && npm test      # 218 e2e/unit tests; uses a local mongod if installed, else downloads one
+cd backend && npm test      # 225 e2e/unit tests; uses a local mongod if installed, else downloads one
 ```
 
 ```bash
-cd frontend && npm test && npm run build && npm run check:bundle   # 76 tests + gzip budget gate
+cd frontend && npm test && npm run build && npm run check:bundle   # 78 tests + gzip budget gate
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.

@@ -7,6 +7,7 @@ import { fmtRange } from '@/lib/format';
 import { can } from '@/lib/permissions';
 import { useQuery } from '@/lib/query';
 import { useAuth } from '@/store/auth';
+import { Analytics } from './Analytics';
 
 export default function Overview() {
   const user = useAuth((s) => s.user)!;
@@ -30,6 +31,12 @@ export default function Overview() {
           )
         }
       />
+
+      {can(user, 'report.read') && (
+        <div className="mb-8">
+          <Analytics fests={fests.data?.items ?? []} />
+        </div>
+      )}
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatTile label="Live fests" value={counts.PUBLISHED ?? 0} icon={SparkIcon} tint="success" loading={fests.loading} />

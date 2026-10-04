@@ -13,6 +13,7 @@ import { REGISTRATION_MODEL, Registration } from '../registrations/registration.
 import { parseTicketToken, verifyTicketToken } from '../tickets/qr';
 import { TICKET_MODEL, Ticket } from '../tickets/ticket.schema';
 import { TICKET_CODE } from '../tickets/tickets.service';
+import { StatsService } from '../stats/stats.service';
 
 type Id = Types.ObjectId;
 
@@ -63,6 +64,7 @@ export class CheckinsService {
     @InjectModel(GLOBAL_EVENT_MODEL) private readonly fests: Model<GlobalEvent>,
     @InjectModel(ORDER_MODEL) private readonly orders: Model<Order>,
     private readonly rbac: RbacService,
+    private readonly stats: StatsService,
   ) {}
 
   /** The event, if the operator may run its gate (scanner for the fest, or an admin of it). */
@@ -169,6 +171,7 @@ export class CheckinsService {
       return { result: 'VOID_TICKET' as const, holder, message: 'This ticket is no longer valid' };
     }
     await record('OK', t);
+    await this.stats.bump(t, { checkins: 1 });
     return { result: 'OK' as const, holder, message: `Welcome, ${t.member_name.split(' ')[0]}!` };
   }
 

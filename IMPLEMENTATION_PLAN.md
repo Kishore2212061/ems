@@ -832,6 +832,19 @@ Index `{local_event_id:1, scanned_at:-1}`, `{ticket_id:1}`.
 
 **Goal:** live dashboards, year-over-year comparisons and CSV exports without slow queries.
 
+> ### ✅ Status: DONE (2026-10-04)
+> | Area | Result |
+> |---|---|
+> | Backend | `daily_stats` (one doc per event per IST day) bumped with `$inc` inside the same transactions as the events they count: registrations + people (confirmed), cancellations, revenue (online when seated, desk when collected), refunds (requests / cancelled events only), check-ins. `GET /reports/overview` (totals, per-day series, departments, top events, **previous edition** found by name), `GET /reports/colleges` (raw aggregation, cached 5 min), `POST /reports/rebuild` (recompute from source collections: backfill/repair; tested equal to the live counters). Scope: department admins see their events; revenue only with `report.finance`. **Live:** `POST /live/pass` → `GET /live/fests/:id?pass=` server-sent events (one listener per connection on an in-process bus, ticks merged ≤ 2/s, 20 s heartbeat, scoped per department; nginx block unbuffered). **CSV:** `GET /exports/registrations.csv` streamed from a cursor (one row per person), PII masked without `export.pii`, formula-injection neutralised, watermark line with who/when, UTF-8 BOM for Excel. |
+> | Frontend | Admin dashboard: fest picker, KPI tiles with **change vs last edition**, live indicator + counters (EventSource with auto-reconnect and fresh pass), registrations-per-day sparkline, departments, most popular events, top colleges (hand-rolled SVG/CSS charts, no library), **Export CSV** (also per event on its Registrations page). |
+> | Tests | Backend **225** (+7: counters across every money/registration/check-in path + scope + money gating, rebuild = live, previous edition + colleges, CSV masking/formula/watermark/scope, live pass + ticks over real HTTP + listener cleanup, 200 connect/disconnect cycles, index plans). Frontend **78** (+2: KPIs/deltas/charts, live ticks). |
+> | Bundle | Initial JS 77.5 KB; dashboard 3.3 KB; charts are plain SVG/divs (0 KB library). **CSS budget raised 15 → 16 KB** (one Tailwind stylesheet for every screen; 15.1 KB now). |
+>
+> **Decisions / deferred**
+> - Exports stream straight to the browser instead of export jobs + storage links: the cursor stream keeps memory flat for any size and needs no file storage. Revisit if exports need to be emailed or scheduled.
+> - Single backend instance assumed for live updates (in-process bus). With several instances, switch the bus to MongoDB change streams.
+> - Heavy reports beyond colleges (GST summary) deferred; finance has the orders list with totals.
+
 ### 10.1 Design
 - **Pre-aggregated counters:** `daily_stats {global_event_id, local_event_id, date, registrations, revenue_paise, checkins}` updated with `$inc` when each event happens (registration confirmed, check-in, refund). Dashboards read these small docs instead of aggregating millions of rows.
 - **Heavy reports** (top colleges, conversion funnel, GST summary) run as aggregation pipelines **in jobs** and are cached for 5 minutes in `report_cache`.

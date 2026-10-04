@@ -14,6 +14,8 @@ import { LocalEventsModule } from './local-events/local-events.module';
 import { MailModule } from './mail/mail.module';
 import { MediaModule } from './media/media.module';
 import { CheckinsModule } from './checkins/checkins.module';
+import { ReportsModule } from './reports/reports.module';
+import { StatsModule } from './stats/stats.service';
 import { FeesModule } from './payments/fee-settings.service';
 import { PaymentsModule } from './payments/payments.module';
 import { RbacModule } from './rbac/rbac.module';
@@ -41,10 +43,12 @@ import { UsersModule } from './users/users.module';
     MediaModule,
     GlobalEventsModule,
     LocalEventsModule,
+    StatsModule,
     FeesModule,
     RegistrationsModule,
     PaymentsModule,
     CheckinsModule,
+    ReportsModule,
     UsersModule,
   ],
   controllers: [HealthController],

@@ -14,6 +14,7 @@ import { FeeSettingsService } from '../payments/fee-settings.service';
 import { calculateBreakdown } from '../payments/fees';
 import { RbacService } from '../rbac/rbac.service';
 import { TicketsService } from '../tickets/tickets.service';
+import { StatsService } from '../stats/stats.service';
 import { rupees, whenText } from '../common/format';
 import { USER_MODEL, User } from '../users/user.schema';
 import {
@@ -81,6 +82,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     private readonly mail: MailService,
     private readonly fees: FeeSettingsService,
     private readonly tickets: TicketsService,
+    private readonly stats: StatsService,
   ) {}
 
   // ── hold sweeper ──────────────────────────────────────────────────────────
@@ -141,6 +143,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     const counter = before.status === 'PAYMENT_PENDING' ? 'seats_held' : 'seats_confirmed';
     await this.events.updateOne({ _id: before.local_event_id }, { $inc: { [counter]: -1 } }, { session });
     await this.tickets.voidRegistration(before._id, set.status === 'EXPIRED' ? 'Seat hold expired' : 'Registration cancelled', session);
+    if (before.status === 'CONFIRMED') await this.stats.bump(before, { cancellations: 1 }, session);
     return before;
   }
 
@@ -290,7 +293,10 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
           );
           const reg = doc.toObject() as Registration;
           // Confirmed now (free / pay at desk): tickets + QR emails in the same transaction.
-          if (status === 'CONFIRMED') await this.tickets.issue(reg, 'confirmed', session);
+          if (status === 'CONFIRMED') {
+            await this.tickets.issue(reg, 'confirmed', session);
+            await this.stats.bump(reg, { registrations: 1, people: reg.members.length }, session);
+          }
           return { reg, replay: false };
         });
         return this.view(out.reg, me.email);
@@ -358,6 +364,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     if (held) {
       await this.events.updateOne({ _id: held.local_event_id }, { $inc: { seats_held: -1, seats_confirmed: 1 } }, { session });
       await this.tickets.issue(held, 'paid', session);
+      await this.stats.bump(held, { registrations: 1, people: held.members.length }, session);
       return { reg: held, seated: true };
     }
     const r = await this.regs.findById(regId).session(session).lean();
@@ -388,6 +395,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
       )
       .lean())!;
     await this.tickets.issue(after, 'paid', session);
+    await this.stats.bump(after, { registrations: 1, people: after.members.length }, session);
     return { reg: after, seated: true };
   }
 

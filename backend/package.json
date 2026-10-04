@@ -8,6 +8,7 @@
     "seed:live": "node dist/cli/seed-live.js",
     "media:ingest": "node dist/cli/media-ingest.js",
     "seed:coordinators": "node dist/cli/seed-coordinators.js",
+    "stats:rebuild": "node dist/cli/stats-rebuild.js",
     "dev": "nest start --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

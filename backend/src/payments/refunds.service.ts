@@ -16,6 +16,7 @@ import { CODE as REG_CODE } from '../registrations/registrations.dto';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { TICKET_MODEL, Ticket } from '../tickets/ticket.schema';
 import { USER_MODEL, User } from '../users/user.schema';
+import { StatsService } from '../stats/stats.service';
 import { GatewayError, PAYMENT_GATEWAY, type PaymentGateway } from './gateway';
 import { ORDER_MODEL, Order } from './order.schema';
 import { REFUND_BATCH_MODEL, REFUND_MODEL, Refund, RefundBatch, RefundSource, RefundStatus } from './refund.schema';
@@ -71,6 +72,7 @@ export class RefundsService {
     private readonly audit: AuditService,
     private readonly jobs: JobsService,
     private readonly mail: MailService,
+    private readonly stats: StatsService,
   ) {
     jobs.register<{ refundId: string }>(PROCESS_JOB, (p) => this.process(new Types.ObjectId(p.refundId)));
     jobs.register<{ eventId: string; reason: string; by: string | null }>(EVENT_CANCELLED_JOB, (p) =>
@@ -173,6 +175,7 @@ export class RefundsService {
       if (ord) await this.regs.updateOne({ _id: r.registration_id }, { $set: { 'payment.status': 'REFUNDED' } });
     }
     if (r.batch_id) await this.finishBatchStep(r.batch_id, 'succeeded');
+    await this.countRefund(done, 1);
     await this.notify(done, 'started');
   }
 
@@ -188,10 +191,17 @@ export class RefundsService {
       const r = await this.refunds.findOneAndUpdate({ gateway_refund_id: entity.id, status: 'SUCCEEDED' }, { $set: { status: 'FAILED', failure: entity.error_description ?? 'Refund failed at the bank' } }).lean();
       if (r?.batch_id) await this.batches.updateOne({ _id: r.batch_id }, { $inc: { succeeded: -1, failed: 1 }, $set: { status: 'PAUSED', paused_reason: 'A refund failed at the bank' } });
       if (r) await this.orders.updateOne({ _id: r.order_id }, { $set: { refund_status: 'FAILED' } });
+      if (r) await this.countRefund(r, -1);
     } else if (event === 'refund.processed') {
       const r = await this.refunds.findOne({ gateway_refund_id: entity.id }).lean();
       if (r) await this.notify(r, 'done');
     }
+  }
+
+  /** Late/duplicate payments were never counted as revenue, so their refunds aren't counted either. */
+  private countRefund(r: Refund, sign: 1 | -1) {
+    if (r.source !== 'REQUEST' && r.source !== 'EVENT_CANCELLED') return;
+    return this.stats.bump(r, { refunds_paise: sign * r.amount_paise });
   }
 
   private async notify(r: Refund, kind: 'started' | 'done' | 'manual' | 'rejected') {
@@ -298,6 +308,7 @@ export class RefundsService {
     await this.orders.updateOne({ _id: r.order_id }, { $set: { refund_status: 'DONE' } });
     await this.regs.updateOne({ _id: r.registration_id }, { $set: { 'payment.status': 'REFUNDED' } });
     if (r.batch_id) await this.finishBatchStep(r.batch_id, 'manual');
+    await this.countRefund(r, 1);
     await this.audit.record({ actorId: user.id, action: 'refund.cash_returned', entity: 'refund', entityId: id, after: { note }, ip });
     return toRefundView(r);
   }

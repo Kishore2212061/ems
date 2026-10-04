@@ -471,6 +471,33 @@ export const adminRefundApi = {
   resume: (id: string) => api.post<{ requeued: number }>(`/admin/refund-batches/${id}/resume`),
 };
 
+// ── reports (Module 9) ──
+export interface ReportTotals {
+  registrations: number;
+  people: number;
+  cancellations: number;
+  checkins: number;
+  /** null when the viewer can't see money (report.finance). */
+  revenuePaise: number | null;
+  refundsPaise: number | null;
+  netPaise: number | null;
+}
+export interface Overview {
+  fest: { id: string; name: string; slug: string; status: FestStatus };
+  totals: ReportTotals;
+  daily: { day: string; registrations: number; people: number; checkins: number; revenuePaise: number | null }[];
+  departments: { code: string; registrations: number; people: number; checkins: number }[];
+  topEvents: { id: string; name: string; registrations: number; people: number; checkins: number }[];
+  previous: { fest: { id: string; name: string; editionYear: number }; totals: ReportTotals } | null;
+}
+
+export const reportApi = {
+  overview: (festId: string) => api.get<Overview>(`/reports/overview${qs({ festId })}`),
+  colleges: (festId: string) => api.get<{ items: { college: string; registrations: number; people: number }[] }>(`/reports/colleges${qs({ festId })}`),
+  livePass: (festId: string) => api.post<{ pass: string; expiresIn: number }>(`/live/pass${qs({ festId })}`),
+  exportRegistrations: (festId: string, eventId?: string) => api.download(`/exports/registrations.csv${qs({ festId, eventId })}`),
+};
+
 export const ticketApi = {
   get: (code: string) => api.get<TicketDetail>(`/tickets/${encodeURIComponent(code)}`),
   resend: (code: string) => api.post<{ sent: true }>(`/tickets/${encodeURIComponent(code)}/resend`),

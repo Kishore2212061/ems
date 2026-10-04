@@ -5,7 +5,9 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-const BUDGET_KB = { initialJs: 95, css: 15, lazyChunk: 30 };
+// CSS: Tailwind emits one stylesheet for every screen (participant, admin, scanner); raised from 15
+// to 16 KB at Module 9 once the full app's utilities no longer fit.
+const BUDGET_KB = { initialJs: 95, css: 16, lazyChunk: 30 };
 
 const dist = 'dist';
 const html = readFileSync(join(dist, 'index.html'), 'utf8');

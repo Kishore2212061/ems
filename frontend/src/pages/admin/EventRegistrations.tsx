@@ -8,9 +8,9 @@ import { Dialog } from '@/components/overlay';
 import { toast } from '@/components/toast';
 import { Alert, Button, TextareaField } from '@/components/ui';
 import { ApiError } from '@/lib/api';
-import { adminPayApi, adminRegApi, eventApi, rupees, type AdminRegistration, type AdminRegistrationPage, type RegistrationStatus } from '@/lib/ems-api';
+import { adminPayApi, adminRegApi, eventApi, reportApi, rupees, type AdminRegistration, type AdminRegistrationPage, type RegistrationStatus } from '@/lib/ems-api';
 import { fmtDateTime, fmtWhen, timeAgo } from '@/lib/format';
-import { canOnEvent } from '@/lib/permissions';
+import { can, canOnEvent } from '@/lib/permissions';
 import { invalidate, useQuery } from '@/lib/query';
 import { useDebounced } from '@/lib/use-debounced';
 import { useAuth } from '@/store/auth';
@@ -124,11 +124,25 @@ export default function EventRegistrations() {
         title="Registrations"
         description={e ? `${e.name} · ${fmtWhen(e.startsAt, e.endsAt)}` : undefined}
         actions={
-          e && canOnEvent(user, 'checkin.scan', festId, e.department?.id ?? null) && e.status !== 'DRAFT' ? (
-            <Link href={`/scan/${eventId}`} className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500">
-              <ScanIcon className="size-4" /> Check-in
-            </Link>
-          ) : undefined
+          e && (
+            <>
+              {can(user, 'report.read') && (
+                <Button
+                  size="sm"
+                  block={false}
+                  variant="secondary"
+                  onClick={() => reportApi.exportRegistrations(festId, eventId).catch((err) => toast.error(err instanceof ApiError ? err.message : 'Export failed'))}
+                >
+                  Export CSV
+                </Button>
+              )}
+              {canOnEvent(user, 'checkin.scan', festId, e.department?.id ?? null) && e.status !== 'DRAFT' && (
+                <Link href={`/scan/${eventId}`} className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500">
+                  <ScanIcon className="size-4" /> Check-in
+                </Link>
+              )}
+            </>
+          )
         }
       />
 

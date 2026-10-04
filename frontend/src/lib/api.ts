@@ -98,6 +98,25 @@ async function request<T>(method: string, path: string, body?: unknown, extra?: 
   }
 }
 
+/** A file the server streams (CSV export): fetched with the session token, saved by the browser. */
+async function download(path: string): Promise<void> {
+  const get = () => fetch(`/api/v1${path}`, { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+  let res = await get().catch(() => null);
+  if (res?.status === 401 && accessToken && (await refreshSession())) res = await get().catch(() => null);
+  if (!res) throw new ApiError(0, 'NETWORK', 'Cannot reach the server. Check your connection.');
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, data?.code ?? 'HTTP_ERROR', data?.message ?? 'Download failed');
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'export.csv';
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown, extra?: Extra) => request<T>('POST', path, body ?? {}, extra),
@@ -105,4 +124,5 @@ export const api = {
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
   del: <T = void>(path: string) => request<T>('DELETE', path),
   upload: <T>(path: string, file: Blob) => request<T>('POST', path, file),
+  download,
 };

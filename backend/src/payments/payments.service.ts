@@ -20,6 +20,7 @@ import { calculateBreakdown } from './fees';
 import { GatewayError, MockGateway, PAYMENT_GATEWAY, type PaymentGateway } from './gateway';
 import { ORDER_MODEL, Order, WEBHOOK_EVENT_MODEL, WebhookEvent } from './order.schema';
 import { RefundsService } from './refunds.service';
+import { StatsService } from '../stats/stats.service';
 import type { OrderListQuery, VerifyDto } from './payments.dto';
 
 type Id = Types.ObjectId;
@@ -66,6 +67,7 @@ export class PaymentsService {
     private readonly jobs: JobsService,
     private readonly tickets: TicketsService,
     private readonly refunds: RefundsService,
+    private readonly stats: StatsService,
   ) {}
 
   private gw(): PaymentGateway {
@@ -228,6 +230,7 @@ export class PaymentsService {
       }
       if (amountPaise !== undefined && amountPaise !== order.amount_paise) this.logger.error(`order ${order.code}: gateway amount ${amountPaise} ≠ ${order.amount_paise}`);
       const { reg, seated } = await this.registrations.confirmPaid(order.registration_id, session);
+      if (seated) await this.stats.bump(order, { revenue_paise: order.amount_paise }, session);
       if (!seated) {
         await this.refunds.autoRefund(order, 'LATE_PAYMENT', paymentId, order.amount_paise, session);
         const leader = reg?.members.find((m) => m.leader);
@@ -275,6 +278,7 @@ export class PaymentsService {
       const u = await this.regs.updateOne({ _id: r._id, 'payment.status': 'DUE', active: true }, { $set: { 'payment.status': 'PAID' }, $inc: { version: 1 } }, { session });
       if (u.modifiedCount !== 1) throw Errors.conflict('ALREADY_PAID', 'Already paid');
       await this.tickets.activate(r._id, session); // "pay first" tickets become entry passes
+      await this.stats.bump(r, { revenue_paise: r.payment.amount_paise }, session);
       const [o] = await this.orders.create(
         [
           {
