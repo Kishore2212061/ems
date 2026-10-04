@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { AppHeader } from '@/components/AppHeader';
 import { EmptyState, Skeleton } from '@/components/data';
-import { ClockIcon, GlobeIcon } from '@/components/event-icons';
+import { ClockIcon, ExpandIcon, GlobeIcon } from '@/components/event-icons';
+import { QrCode } from '@/components/QrCode';
 import { AlertIcon, ArrowLeftIcon, CheckIcon, CopyIcon, MapPinIcon, TicketIcon, UserIcon } from '@/components/icons';
 import { Badge } from '@/components/layout';
 import { ConfirmDialog, Dialog } from '@/components/overlay';
@@ -256,6 +257,17 @@ export default function RegistrationDetail() {
                 </div>
               </dl>
 
+              {r.ticket?.qr ? (
+                // The entry pass: my own ticket's QR (each teammate has their own).
+                <div className="mt-5 flex flex-col items-center rounded-2xl border border-line bg-surface-2/60 p-5 text-center">
+                  <QrCode value={r.ticket.qr} size={208} label="Your entry QR code" />
+                  <p className="mt-3 font-mono text-sm font-bold tracking-[.2em] text-fg">{r.ticket.code}</p>
+                  <p className="mt-1 text-xs text-muted">{r.ticket.status === 'PAYMENT_PENDING' ? 'Pay at the desk, then show this QR' : 'Show this QR at the registration desk'}</p>
+                  <Link href={`/my/tickets/${r.ticket.code}`} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500">
+                    <ExpandIcon className="size-4" /> Full-screen ticket
+                  </Link>
+                </div>
+              ) : (
               <div className="mt-5 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-subtle">Registration code</p>
@@ -270,6 +282,7 @@ export default function RegistrationDetail() {
                   <CopyIcon className="size-4" />
                 </button>
               </div>
+              )}
             </section>
 
             <StatusPanel

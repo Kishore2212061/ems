@@ -9,10 +9,12 @@ import { env } from '../config/env';
 import { GLOBAL_EVENT_MODEL, GlobalEvent } from '../global-events/global-event.schema';
 import { LOCAL_EVENT_MODEL, LocalEvent, VISIBLE_STATUSES } from '../local-events/local-event.schema';
 import { MailService } from '../mail/mail.service';
-import { registrationCancelledEmail, registrationEmail } from '../mail/templates';
+import { registrationCancelledEmail } from '../mail/templates';
 import { FeeSettingsService } from '../payments/fee-settings.service';
 import { calculateBreakdown } from '../payments/fees';
 import { RbacService } from '../rbac/rbac.service';
+import { TicketsService } from '../tickets/tickets.service';
+import { rupees, whenText } from '../common/format';
 import { USER_MODEL, User } from '../users/user.schema';
 import {
   HOLD_MINUTES,
@@ -47,13 +49,6 @@ const SWEEP_EVERY_MS = 30_000;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L: read aloud at a desk
 const newCode = () => `REG-${Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('')}`;
 
-const TZ = 'Asia/Kolkata';
-const fmtDay = new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ });
-const fmtTime = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
-const time = (d: Date) => fmtTime.format(d).toUpperCase();
-const whenText = (s: Date, e: Date | null) =>
-  !e ? `${fmtDay.format(s)}, ${time(s)}` : fmtDay.format(s) === fmtDay.format(e) ? `${fmtDay.format(s)}, ${time(s)} – ${time(e)}` : `${fmtDay.format(s)} ${time(s)} – ${fmtDay.format(e)} ${time(e)}`;
-const rupees = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 /** Thrown inside the transaction when the seat update matched nothing (full, or no longer open). */
 class NoSeat extends Error {}
@@ -85,6 +80,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     private readonly audit: AuditService,
     private readonly mail: MailService,
     private readonly fees: FeeSettingsService,
+    private readonly tickets: TicketsService,
   ) {}
 
   // ── hold sweeper ──────────────────────────────────────────────────────────
@@ -144,6 +140,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     if (!before) return null;
     const counter = before.status === 'PAYMENT_PENDING' ? 'seats_held' : 'seats_confirmed';
     await this.events.updateOne({ _id: before.local_event_id }, { $inc: { [counter]: -1 } }, { session });
+    await this.tickets.voidRegistration(before._id, set.status === 'EXPIRED' ? 'Seat hold expired' : 'Registration cancelled', session);
     return before;
   }
 
@@ -287,7 +284,8 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
             { session },
           );
           const reg = doc.toObject() as Registration;
-          if (status === 'CONFIRMED') await this.mailConfirmation(reg, ev, fest!, session);
+          // Confirmed now (free / pay at desk): tickets + QR emails in the same transaction.
+          if (status === 'CONFIRMED') await this.tickets.issue(reg, 'confirmed', session);
           return { reg, replay: false };
         });
         return this.view(out.reg, me.email);
@@ -354,7 +352,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
       .lean();
     if (held) {
       await this.events.updateOne({ _id: held.local_event_id }, { $inc: { seats_held: -1, seats_confirmed: 1 } }, { session });
-      await this.mailPaid(held, session);
+      await this.tickets.issue(held, 'paid', session);
       return { reg: held, seated: true };
     }
     const r = await this.regs.findById(regId).session(session).lean();
@@ -384,34 +382,8 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
         { new: true, session },
       )
       .lean())!;
-    await this.mailPaid(after, session);
+    await this.tickets.issue(after, 'paid', session);
     return { reg: after, seated: true };
-  }
-
-  private async mailPaid(r: Registration, session: ClientSession) {
-    const [ev, fest] = await Promise.all([
-      this.events.findById(r.local_event_id).select(EVENT_FIELDS).session(session).lean<EventRow>(),
-      this.fests.findById(r.global_event_id).select('name').session(session).lean(),
-    ]);
-    if (ev && fest) await this.mailConfirmation(r, ev, fest, session);
-  }
-
-  private async mailConfirmation(r: Registration, ev: EventRow, fest: Pick<GlobalEvent, 'name'>, session: ClientSession) {
-    const leader = r.members.find((m) => m.leader)!;
-    const base = {
-      event: ev.name,
-      fest: fest.name,
-      when: whenText(ev.starts_at!, ev.ends_at),
-      where: ev.venue ?? (ev.online ? 'Online' : 'Venue to be announced'),
-      code: r.code,
-      team: r.team_name,
-      members: r.members.map((m) => m.name),
-      payment: r.payment.status === 'DUE' ? `Pay ${rupees(r.payment.amount_paise)} at the registration desk` : r.payment.status === 'PAID' ? `${rupees(r.payment.amount_paise)} paid` : 'Free',
-      link: `${env.WEB_BASE_URL}/my/registrations/${r.code}`,
-    };
-    for (const m of r.members) {
-      await this.mail.dispatch({ to: m.email, ...registrationEmail({ ...base, name: m.name, ...(!m.leader && { addedBy: leader.name }) }) }, { session });
-    }
   }
 
   // ── participant reads ─────────────────────────────────────────────────────
@@ -429,8 +401,10 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     return rows.map((r) => toView(r, email, ev.get(String(r.local_event_id)), fe.get(String(r.global_event_id))));
   }
 
+  /** One registration, with the viewer's own ticket (QR) when there is one. */
   private async view(r: Registration, email: string) {
-    return (await this.views([r], email))[0];
+    const [v, ticket] = await Promise.all([this.views([r], email).then((x) => x[0]), this.tickets.forMember(r._id, email)]);
+    return { ...v, ticket };
   }
 
   /** Everything the person is part of (as leader or teammate), in time order. Bounded. */

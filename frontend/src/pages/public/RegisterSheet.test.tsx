@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { ApiError } from '@/lib/api';
-import { regApi, type EventDetail, type Registration } from '@/lib/ems-api';
+import { payApi, regApi, type EventDetail, type Registration } from '@/lib/ems-api';
 import { useAuth } from '@/store/auth';
 import RegisterSheet from './RegisterSheet';
 
@@ -38,6 +38,7 @@ function mount(e: EventDetail, onRegistered = vi.fn()) {
 }
 
 beforeEach(() => {
+  vi.spyOn(payApi, 'fees').mockResolvedValue({ platformFeeBps: 0, platformFeeFlatPaise: 0, gstBps: 0, feeBearer: 'PARTICIPANT' });
   useAuth.getState().setUser({ id: 'u1', email: 'lead@nec.edu', fullName: 'Team Lead', phone: null, college: null, status: 'ACTIVE', emailVerified: true, roles: [], createdAt: '2026-01-01' });
 });
 afterEach(() => {
@@ -73,7 +74,7 @@ describe('RegisterSheet', () => {
     const create = vi
       .spyOn(regApi, 'create')
       .mockRejectedValueOnce(new ApiError(0, 'NETWORK', 'Cannot reach the server. Check your connection.'))
-      .mockResolvedValueOnce(done());
+      .mockResolvedValueOnce(done({ ticket: { code: 'TCK-AB12-CD', status: 'ACTIVE', registrationCode: 'REG-K7M2QP', holder: 'Team Lead', leader: true, issuedAt: '', usedAt: null, qr: 'EMS1.TCK-AB12-CD.k1.abcdefghijklmnopqrstuv' } }));
     mount(event());
     await userEvent.type(screen.getByLabelText('Team name'), 'Byte Busters');
     await userEvent.type(screen.getByLabelText('Name'), 'Asha');
@@ -83,7 +84,10 @@ describe('RegisterSheet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Confirm registration' }));
 
     expect(await screen.findByText("You're registered!")).toBeTruthy();
-    expect(screen.getByText('REG-K7M2QP')).toBeTruthy();
+    // The QR (entry pass) replaces the plain code.
+    expect(await screen.findByRole('img', { name: 'Your entry QR code' })).toBeTruthy();
+    expect(screen.getByText('TCK-AB12-CD')).toBeTruthy();
+    expect(screen.queryByText('REG-K7M2QP')).toBeNull();
     expect(create).toHaveBeenCalledTimes(2);
     expect(create.mock.calls[0][0]).toEqual({ eventId: 'e1', teamName: 'Byte Busters', teammates: [{ name: 'Asha', email: 'asha@nec.edu' }], paymentMode: undefined });
     expect(create.mock.calls[1][1]).toBe(create.mock.calls[0][1]); // same Idempotency-Key

@@ -5,11 +5,21 @@ import { env } from '../config/env';
 import { JobsService } from '../jobs/jobs.service';
 import { otpEmail } from './templates';
 
+/** An image shown inside the email body via <img src="cid:…"> (works when remote images are blocked). */
+export interface InlineImage {
+  filename: string;
+  /** base64 */
+  content: string;
+  contentType: string;
+  cid: string;
+}
+
 export interface MailMessage {
   to: string;
   subject: string;
   html: string;
   text: string;
+  inline?: InlineImage[];
 }
 
 type Sender = (msg: MailMessage) => Promise<void>;
@@ -44,7 +54,13 @@ export class MailService implements OnModuleInit {
         const { Resend } = await import('resend');
         const client = new Resend(env.RESEND_API_KEY);
         return async (m) => {
-          const { error } = await client.emails.send({ from: this.from, replyTo: env.EMAIL_REPLY_TO, ...m });
+          const { inline, ...msg } = m;
+          const { error } = await client.emails.send({
+            from: this.from,
+            replyTo: env.EMAIL_REPLY_TO,
+            ...msg,
+            ...(inline?.length && { attachments: inline.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType, contentId: a.cid })) }),
+          });
           if (error) throw new Error(`${error.name}: ${error.message}`);
         };
       }
@@ -58,7 +74,13 @@ export class MailService implements OnModuleInit {
           auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
         });
         return async (m) => {
-          await transport.sendMail({ from: this.from, replyTo: env.EMAIL_REPLY_TO, ...m });
+          const { inline, ...msg } = m;
+          await transport.sendMail({
+            from: this.from,
+            replyTo: env.EMAIL_REPLY_TO,
+            ...msg,
+            ...(inline?.length && { attachments: inline.map((a) => ({ filename: a.filename, content: a.content, encoding: 'base64', contentType: a.contentType, cid: a.cid })) }),
+          });
         };
       }
       default:
@@ -70,8 +92,8 @@ export class MailService implements OnModuleInit {
    * Durably queue an email (one indexed insert, ~2 ms). Delivery + retries happen in the worker.
    * Pass the caller's session to queue it inside a transaction: it's sent only if the change commits.
    */
-  dispatch(msg: MailMessage, opts: { session?: ClientSession } = {}): Promise<void> {
-    return this.jobs.enqueue(EMAIL_JOB, msg, { maxAttempts: 6, session: opts.session });
+  dispatch(msg: MailMessage, opts: { session?: ClientSession; idempotencyKey?: string } = {}): Promise<void> {
+    return this.jobs.enqueue(EMAIL_JOB, msg, { maxAttempts: 6, session: opts.session, idempotencyKey: opts.idempotencyKey });
   }
 
   sendOtp(to: string, name: string, code: string, ttlMinutes: number, purpose: OtpPurpose) {

@@ -640,6 +640,19 @@ Register click
 
 **Goal:** one ticket per member, a signed single-use QR, emailed and viewable in the app.
 
+> ### ✅ Status: DONE (2026-10-04)
+> | Area | Result |
+> |---|---|
+> | Backend | `tickets`: one per team member, issued **inside the transaction that confirms the registration** (free / pay-at-desk at once, online when paid), so a confirmed registration always has its tickets. Pay-at-desk tickets start as `PAYMENT_PENDING` and become `ACTIVE` when the desk collects; cancelling a registration, an expired hold or a cancelled event → `VOID`. Emails: a job renders each member's QR (PNG via sharp, ~0.5 KB) and sends it **embedded inline (cid)** to that member, once per ticket and reason. `GET /tickets/my`, `GET /tickets/:code` (owner, `no-store`, with QR), `POST /tickets/:code/resend` (3/hour, to the requester only), public `GET /verify/:code` (status + initials). Registration views carry the viewer's own ticket. |
+> | Frontend | **QR instead of the code** on the registration page and the success screen; full-screen ticket `/my/tickets/:code` (same card as the sign-in page, QR at full width, Wake Lock keeps the screen on, "email me this ticket"); public `/verify/:code`. |
+> | Tests | Backend **202** (+11: per-member tickets and QR emails with inline PNG, desk pay-first → active, online issued once on payment, void on cancel/event cancel, idempotent issue, signature (reissue/forgery/unknown key), holder endpoints + resend limit + public check, index plans). Frontend **71** (+1, QR shown instead of code in sheet and page). |
+> | Bundle | Initial JS 77.2 KB; QR encoder (`uqr`, MIT, no deps) **3.6 KB lazy** (only where a QR is shown); ticket page 2.0 KB + QR component 0.6 KB. |
+>
+> **Decisions**
+> - **Compact HMAC payload instead of a JWT:** `EMS1.<TCK code>.<kid>.<mac>` = 42 characters → a 33-module QR (vs ~180-char JWT → 53+ modules) that scans faster on dim phone screens. The mac covers the code and a per-ticket `jti`, so re-issuing a QR kills old screenshots; `kid` + `QR_PREVIOUS_KEYS` allow key rotation. Validity (event, used, void) is always checked against the server ledger at the gate (Module 7), so no `exp` inside the QR.
+> - **One small encoder for both sides** (`uqr`): browser SVG and server PNG (rasterised by the sharp we already ship), so no `qrcode`/canvas dependency.
+> - Found while testing: an idempotent job enqueue **inside a transaction** with an existing key aborted the transaction and the driver retried forever. `JobsService.enqueue` now looks before inserting when given a session (index-backed).
+
 ### 7.1 Data model — `tickets`
 `{ code (TCK-XXXX-XX, Crockford base32), registration_id, member_id, user_id?, global_event_id, local_event_id, status: 'ACTIVE'|'PAYMENT_PENDING'|'USED'|'VOID', jti, kid, used_at, used_by_device, issued_at }`
 Indexes: `code` unique, `jti` unique, `{local_event_id:1, status:1}`, `{user_id:1, issued_at:-1}`.

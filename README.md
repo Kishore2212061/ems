@@ -14,6 +14,7 @@ Remaining work, module by module: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.m
 | 3 | Department events: catalogue, search, authoring, Tech Fest '25 seed (123 events) | ✅ |
 | 4 | Registrations: day-wise schedule, teams, no time clashes, seat holds, organiser view | ✅ |
 | 5 | Payments: Razorpay checkout + webhook, fee/GST engine, pay at the desk, refunds on late payment, finance view | ✅ |
+| 6 | Tickets: one per member, signed QR in the app and in emails, full-screen pass, public verify | ✅ |
 
 ## Architecture (Module 1)
 
@@ -70,11 +71,11 @@ cd backend && npm run build && npm run seed:live
 ### Tests
 
 ```bash
-cd backend && npm test      # 191 e2e/unit tests; uses a local mongod if installed, else downloads one
+cd backend && npm test      # 202 e2e/unit tests; uses a local mongod if installed, else downloads one
 ```
 
 ```bash
-cd frontend && npm test && npm run build && npm run check:bundle   # 70 tests + gzip budget gate
+cd frontend && npm test && npm run build && npm run check:bundle   # 71 tests + gzip budget gate
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.

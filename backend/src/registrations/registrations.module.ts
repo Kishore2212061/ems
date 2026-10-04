@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GlobalEventsModule } from '../global-events/global-events.module';
+import { TicketsModule } from '../tickets/tickets.module';
 import { REGISTRATION_LOCK_MODEL, REGISTRATION_MODEL, RegistrationLockSchema, RegistrationSchema } from './registration.schema';
 import { AdminRegistrationsController, RegistrationsController } from './registrations.controller';
 import { RegistrationsService } from './registrations.service';
@@ -9,6 +10,7 @@ import { RegistrationsService } from './registrations.service';
 @Module({
   imports: [
     GlobalEventsModule,
+    TicketsModule,
     MongooseModule.forFeature([
       { name: REGISTRATION_MODEL, schema: RegistrationSchema },
       { name: REGISTRATION_LOCK_MODEL, schema: RegistrationLockSchema },

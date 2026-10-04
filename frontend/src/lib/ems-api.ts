@@ -170,7 +170,36 @@ export interface OrderPage extends Page<OrderView> {
   totals?: { onlinePaise: number; onlineCount: number; deskPaise: number; deskCount: number; refunds: number };
 }
 
+// ── tickets (Module 6) ──
+export type TicketStatus = 'ACTIVE' | 'PAYMENT_PENDING' | 'USED' | 'VOID';
+export interface TicketView {
+  code: string;
+  status: TicketStatus;
+  registrationCode: string;
+  holder: string;
+  leader: boolean;
+  issuedAt: string;
+  usedAt: string | null;
+  /** Signed QR payload (owner views only, absent when void). */
+  qr?: string;
+}
+export interface TicketDetail extends TicketView {
+  event: { name: string; slug: string; startsAt: string | null; endsAt: string | null; venue: string | null; online: boolean } | null;
+  fest: { name: string; slug: string } | null;
+}
+export interface TicketCheck {
+  code: string;
+  status: TicketStatus;
+  holder: string;
+  event: string | null;
+  startsAt: string | null;
+  fest: string | null;
+  usedAt: string | null;
+}
+
 export interface Registration {
+  /** The viewer's own ticket (single-registration views only). */
+  ticket?: TicketView | null;
   code: string;
   status: RegistrationStatus;
   role: 'LEADER' | 'MEMBER';
@@ -350,6 +379,12 @@ export const regApi = {
   mine: () => api.get<{ items: Registration[] }>('/registrations/my'),
   get: (code: string) => api.get<Registration>(`/registrations/${encodeURIComponent(code)}`),
   cancel: (code: string, reason?: string) => api.post<Registration>(`/registrations/${encodeURIComponent(code)}/cancel`, reason ? { reason } : {}),
+};
+
+export const ticketApi = {
+  get: (code: string) => api.get<TicketDetail>(`/tickets/${encodeURIComponent(code)}`),
+  resend: (code: string) => api.post<{ sent: true }>(`/tickets/${encodeURIComponent(code)}/resend`),
+  verify: (code: string) => api.get<TicketCheck>(`/verify/${encodeURIComponent(code)}`),
 };
 
 export const payApi = {

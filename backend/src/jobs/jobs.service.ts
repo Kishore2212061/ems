@@ -53,6 +53,9 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
   }
 
   async enqueue<P extends object>(type: string, payload: P, o: EnqueueOptions = {}): Promise<void> {
+    // Inside a transaction a duplicate-key error aborts the whole transaction (even if caught), and
+    // the driver would retry it forever: look first. A concurrent twin conflicts and retries instead.
+    if (o.session && o.idempotencyKey && (await this.jobs.exists({ idempotency_key: { $eq: o.idempotencyKey, $type: 'string' } }).session(o.session))) return;
     try {
       await this.jobs.create(
         [

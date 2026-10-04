@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { CardIcon, ClockIcon, TrashIcon } from '@/components/event-icons';
 import { CheckIcon, MapPinIcon, PlusIcon, UserIcon, WalletIcon } from '@/components/icons';
 import { Dialog } from '@/components/overlay';
+import { QrCode } from '@/components/QrCode';
 import { Alert, Button, cx, Field } from '@/components/ui';
 import { ApiError } from '@/lib/api';
 import { payApi, regApi, rupees, type EventDetail, type PaymentMode, type Registration } from '@/lib/ems-api';
@@ -137,12 +138,19 @@ export default function RegisterSheet({ event: e, open, onClose, onRegistered }:
           </span>
           <p className="mt-4 text-xl font-bold text-fg">You're registered!</p>
           <p className="mt-1 text-sm text-muted">{e.name}</p>
-          <p className="mt-4 rounded-xl bg-surface-2 px-4 py-2 font-mono text-lg font-bold tracking-widest text-fg">{done.code}</p>
+          {done.ticket?.qr ? (
+            <div className="mt-4 flex flex-col items-center">
+              <QrCode value={done.ticket.qr} size={184} className="ring-1 ring-line" label="Your entry QR code" />
+              <p className="mt-2 font-mono text-xs font-bold tracking-[.2em] text-muted">{done.ticket.code}</p>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl bg-surface-2 px-4 py-2 font-mono text-lg font-bold tracking-widest text-fg">{done.code}</p>
+          )}
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-fg-2">
             {done.payment.status === 'DUE'
-              ? `Pay ${rupees(done.payment.amountPaise)} at the registration desk before the event. Show this code there.`
-              : 'Show this code at the registration desk.'}
-            {done.members.length > 1 && ' Your teammates got an email too.'}
+              ? `Pay ${rupees(done.payment.amountPaise)} at the registration desk before the event, then show this QR.`
+              : 'Show this QR at the registration desk. It is also in your email.'}
+            {done.members.length > 1 && ' Each teammate got their own QR by email.'}
           </p>
         </div>
       </Dialog>

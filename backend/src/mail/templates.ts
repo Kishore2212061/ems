@@ -78,6 +78,16 @@ export interface RegistrationMailInput {
   link: string;
   /** Set when someone else (the team leader) registered the recipient. */
   addedBy?: string;
+  /** The recipient's own ticket: its QR is embedded as an inline image (cid). */
+  ticket?: { code: string; cid: string; payFirst: boolean };
+}
+
+function qrBlock(t: NonNullable<RegistrationMailInput['ticket']>) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr><td align="center" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px">
+<img src="cid:${esc(t.cid)}" width="200" height="200" alt="Your entry QR code" style="display:block;width:200px;height:200px;border:0">
+<div style="margin-top:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;letter-spacing:2px;color:#6b7280">${esc(t.code)}</div>
+<div style="margin-top:6px;font-size:13px;color:#374151">${t.payFirst ? 'Pay at the registration desk, then show this QR' : 'Show this QR at the registration desk'}</div>
+</td></tr></table>`;
 }
 
 export function registrationEmail(r: RegistrationMailInput) {
@@ -85,7 +95,7 @@ export function registrationEmail(r: RegistrationMailInput) {
     ? `Hi ${esc(r.name)}, <strong>${esc(r.addedBy)}</strong> registered you${r.team ? ` in team <strong>${esc(r.team)}</strong>` : ''} for <strong>${esc(r.event)}</strong> at ${esc(r.fest)}.`
     : `Hi ${esc(r.name)}, you're registered for <strong>${esc(r.event)}</strong> at ${esc(r.fest)}.`;
   const rows: [string, string][] = [
-    ['Code', r.code],
+    ...(r.ticket ? [] : [['Code', r.code] as [string, string]]),
     ['When', r.when],
     ['Where', r.where],
     ...(r.members.length > 1 ? [['Team', `${r.team ? `${r.team}: ` : ''}${r.members.join(', ')}`] as [string, string]] : []),
@@ -93,12 +103,12 @@ export function registrationEmail(r: RegistrationMailInput) {
   ];
   const next = r.addedBy
     ? 'Sign in (or create an account) with this email address to see it in your registrations. If this is a mistake, contact the team leader or the event coordinators.'
-    : 'Keep the code handy: you will need it at the registration desk.';
-  const html = layout(r.addedBy ? 'You have been added to a team' : "You're registered", `${p(intro)}${facts(rows)}${button(r.link, 'View registration')}<p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5">${esc(next)}</p>`);
+    : 'Keep this email handy: the QR is your entry pass (it is also in the app).';
+  const html = layout(r.addedBy ? 'You have been added to a team' : "You're registered", `${p(intro)}${r.ticket ? qrBlock(r.ticket) : ''}${facts(rows)}${button(r.link, 'View registration')}<p style="margin:0;font-size:13px;color:#6b7280;line-height:1.5">${esc(next)}</p>`);
   return {
     subject: `${r.addedBy ? 'Added to a team' : 'Registered'}: ${r.event} (${r.code})`,
     html,
-    text: `${r.addedBy ? `${r.addedBy} registered you${r.team ? ` in team ${r.team}` : ''} for ${r.event} at ${r.fest}.` : `You're registered for ${r.event} at ${r.fest}.`}\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nView: ${r.link}\n\n${next}`,
+    text: `${r.addedBy ? `${r.addedBy} registered you${r.team ? ` in team ${r.team}` : ''} for ${r.event} at ${r.fest}.` : `You're registered for ${r.event} at ${r.fest}.`}\n\n${r.ticket ? `Ticket: ${r.ticket.code} (your QR is in this email and in the app)\n` : ''}${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nView: ${r.link}\n\n${next}`,
   };
 }
 

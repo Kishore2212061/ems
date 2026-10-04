@@ -14,6 +14,7 @@ import { RbacService } from '../rbac/rbac.service';
 import { REGISTRATION_MODEL, Registration } from '../registrations/registration.schema';
 import { CODE as REG_CODE } from '../registrations/registrations.dto';
 import { RegistrationsService } from '../registrations/registrations.service';
+import { TicketsService } from '../tickets/tickets.service';
 import { USER_MODEL, User } from '../users/user.schema';
 import { calculateBreakdown } from './fees';
 import { GatewayError, MockGateway, PAYMENT_GATEWAY, type PaymentGateway } from './gateway';
@@ -63,6 +64,7 @@ export class PaymentsService {
     private readonly audit: AuditService,
     private readonly mail: MailService,
     private readonly jobs: JobsService,
+    private readonly tickets: TicketsService,
   ) {
     jobs.register<{ orderId: string; paymentId: string; amountPaise: number }>(REFUND_JOB, (p) => this.runRefund(p));
   }
@@ -278,6 +280,7 @@ export class PaymentsService {
     const order = await this.tx(async (session) => {
       const u = await this.regs.updateOne({ _id: r._id, 'payment.status': 'DUE', active: true }, { $set: { 'payment.status': 'PAID' }, $inc: { version: 1 } }, { session });
       if (u.modifiedCount !== 1) throw Errors.conflict('ALREADY_PAID', 'Already paid');
+      await this.tickets.activate(r._id, session); // "pay first" tickets become entry passes
       const [o] = await this.orders.create(
         [
           {

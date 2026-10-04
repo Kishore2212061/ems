@@ -74,6 +74,16 @@ describe('paying for a held seat', () => {
     expect(await screen.findByText("You're registered · ₹354 paid")).toBeTruthy();
   });
 
+  it('a confirmed registration shows my QR instead of the code, with a full-screen ticket link', async () => {
+    vi.spyOn(regApi, 'get').mockResolvedValueOnce(
+      pending({ status: 'CONFIRMED', holdExpiresAt: null, payment: { ...pending().payment, status: 'PAID' }, ticket: { code: 'TCK-QR12-AB', status: 'ACTIVE', registrationCode: 'REG-PAYME2', holder: 'Asha', leader: true, issuedAt: '', usedAt: null, qr: 'EMS1.TCK-QR12-AB.k1.abcdefghijklmnopqrstuv' } }),
+    );
+    mount();
+    expect(await screen.findByRole('img', { name: 'Your entry QR code' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Full-screen ticket/ }).getAttribute('href')).toBe('/my/tickets/TCK-QR12-AB');
+    expect(screen.queryByText('Registration code')).toBeNull();
+  });
+
   it("teammates are told the leader pays", async () => {
     vi.spyOn(regApi, 'get').mockResolvedValueOnce(pending({ role: 'MEMBER' }));
     mount();

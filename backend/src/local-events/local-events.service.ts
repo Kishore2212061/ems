@@ -10,6 +10,7 @@ import { MediaService } from '../media/media.service';
 import { RbacService } from '../rbac/rbac.service';
 import { REGISTRATION_MODEL, type Registration } from '../registrations/registration.schema';
 import { effectiveEnd, istDayRange } from '../registrations/schedule';
+import { TICKET_MODEL, type Ticket } from '../tickets/ticket.schema';
 import { eventRuleErrors, type CreateEventDto, type PublicEventQuery, type UpdateEventDto } from './local-events.dto';
 import {
   ADMIN_ROW_FIELDS,
@@ -72,6 +73,7 @@ export class LocalEventsService {
     @InjectModel(LOCAL_EVENT_MODEL) private readonly events: Model<LocalEvent>,
     @InjectModel(GLOBAL_EVENT_MODEL) private readonly fests: Model<GlobalEvent>,
     @InjectModel(REGISTRATION_MODEL) private readonly regs: Model<Registration>,
+    @InjectModel(TICKET_MODEL) private readonly tickets: Model<Ticket>,
     private readonly rbac: RbacService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
@@ -368,6 +370,7 @@ export class LocalEventsService {
       { $set: { status: 'CANCELLED', active: false, hold_expires_at: null, cancel_reason: `Event cancelled: ${reason}`, cancelled_at: new Date() } },
     );
     await this.regs.updateMany({ local_event_id: id, active: true }, { $set: { active: false } });
+    await this.tickets.updateMany({ local_event_id: id, status: { $in: ['ACTIVE', 'PAYMENT_PENDING'] } }, { $set: { status: 'VOID', void_reason: `Event cancelled: ${reason}` } });
     return out;
   }
 
