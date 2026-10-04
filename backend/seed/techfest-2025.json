@@ -4,7 +4,8 @@
     "Departments come from each poster folder (/events/<dept>/...). Ideathon is fest-wide (department null).",
     "Prices: the fest sold day passes (Rs 200 one day, Rs 300 both days), not per-event tickets, so every event is imported as free.",
     "Workshops: 30 seats each (site ticker). Online events: from the site ticker. Team sizes: parsed from the rules text.",
-    "Posters: web-sized copies in frontend/public/media/tf25 (<slug>.webp 720 px, <slug>-card.webp 640x400). Paper Presentation (Mech) has none: its image is missing on the source site."
+    "Posters: web-sized copies in frontend/public/media/tf25 (<slug>.webp 720 px, <slug>-card.webp 640x400). Paper Presentation (Mech) has none: its image is missing on the source site.",
+    "Coordinator names and phone numbers are made up (sample data), not the real coordinators."
   ],
   "replaceImagesFrom": "https://techfestnec.vercel.app/",
   "fest": {
@@ -48,17 +49,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Suguna P",
+          "name": "Shalini M",
           "role": "FACULTY"
         },
         {
-          "name": "Manoj Kumar B",
-          "phone": "8220605419",
+          "name": "Aishwarya T",
+          "phone": "9855044703",
           "role": "STUDENT"
         },
         {
-          "name": "Subha Shunmugaa T",
-          "phone": "7904990391",
+          "name": "Dinesh N",
+          "phone": "9505143326",
           "role": "STUDENT"
         }
       ],
@@ -92,22 +93,22 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ummu Sabura H",
+          "name": "Sneha S",
           "role": "FACULTY"
         },
         {
-          "name": "Mariappan R",
-          "phone": "9489746417",
+          "name": "Vignesh N",
+          "phone": "7963658487",
           "role": "STUDENT"
         },
         {
-          "name": "Guru Vellapandi G",
-          "phone": "8248183678",
+          "name": "Vinoth M",
+          "phone": "8465764074",
           "role": "STUDENT"
         },
         {
-          "name": "Naveen Kumar M",
-          "phone": "6382836334",
+          "name": "Gokul A",
+          "phone": "9465644499",
           "role": "STUDENT"
         }
       ],
@@ -141,12 +142,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Akila M",
+          "name": "Nithya M",
           "role": "FACULTY"
         },
         {
-          "name": "Loga Naresh N",
-          "phone": "9597965096",
+          "name": "Charan E",
+          "phone": "9201488851",
           "role": "STUDENT"
         }
       ],
@@ -181,12 +182,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Malathi M",
+          "name": "Vasanth E",
           "role": "FACULTY"
         },
         {
-          "name": "Akshai A",
-          "phone": "9345991426",
+          "name": "Nandhini C",
+          "phone": "6777458066",
           "role": "STUDENT"
         }
       ],
@@ -221,12 +222,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Santhi S",
+          "name": "Divya E",
           "role": "FACULTY"
         },
         {
-          "name": "Sadhasivam M",
-          "phone": "9600757482",
+          "name": "Sneha V",
+          "phone": "9726779053",
           "role": "STUDENT"
         }
       ],
@@ -260,12 +261,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Anitha Mam",
+          "name": "Vignesh G",
           "role": "FACULTY"
         },
         {
-          "name": "Keerthik V",
-          "phone": "6381258491",
+          "name": "Kavya B",
+          "phone": "9789142863",
           "role": "STUDENT"
         }
       ],
@@ -297,17 +298,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ajitha S",
+          "name": "Vinoth M",
           "role": "FACULTY"
         },
         {
-          "name": "Aakash Dalmetha R",
-          "phone": "6385525468",
+          "name": "Sneha R",
+          "phone": "7893143468",
           "role": "STUDENT"
         },
         {
-          "name": "Jegatheesh S",
-          "phone": "7558110650",
+          "name": "Aishwarya K",
+          "phone": "9874744444",
           "role": "STUDENT"
         }
       ],
@@ -340,13 +341,13 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Gautham S N",
-          "phone": "6382695887",
+          "name": "Dinesh G",
+          "phone": "8708354838",
           "role": "STUDENT"
         },
         {
-          "name": "Akash Velan A",
-          "phone": "6381453013",
+          "name": "Pranav G",
+          "phone": "6146208000",
           "role": "STUDENT"
         }
       ],
@@ -377,12 +378,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Gowthami N AP/IT",
+          "name": "Yamini M",
           "role": "FACULTY"
         },
         {
-          "name": "Arun A",
-          "phone": "9442545033",
+          "name": "Harini N",
+          "phone": "8711846158",
           "role": "STUDENT"
         }
       ],
@@ -416,12 +417,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Gowthami N",
+          "name": "Vinoth S",
           "role": "FACULTY"
         },
         {
-          "name": "Narayanan M",
-          "phone": "9150474743",
+          "name": "Sowmya M",
+          "phone": "7168344364",
           "role": "STUDENT"
         }
       ],
@@ -456,12 +457,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Gowthami N",
+          "name": "Bharath B",
           "role": "FACULTY"
         },
         {
-          "name": "Sumugar M",
-          "phone": "9345501256",
+          "name": "Sathish C",
+          "phone": "7459889600",
           "role": "STUDENT"
         }
       ],
@@ -505,17 +506,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. M. Manimegalai",
+          "name": "Gokul R",
           "role": "FACULTY"
         },
         {
-          "name": "Akhil R",
-          "phone": "9361863548",
+          "name": "Hari G",
+          "phone": "8789998835",
           "role": "STUDENT"
         },
         {
-          "name": "Sheik Raseeth Ansar A",
-          "phone": "9384542863",
+          "name": "Nandhini J",
+          "phone": "9450176007",
           "role": "STUDENT"
         }
       ],
@@ -550,17 +551,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. M. Srimathi",
+          "name": "Saranya A",
           "role": "FACULTY"
         },
         {
-          "name": "Hari Rajesh B",
-          "phone": "8825777232",
+          "name": "Yuvan M",
+          "phone": "6462159715",
           "role": "STUDENT"
         },
         {
-          "name": "Hari Shankar Babu M",
-          "phone": "6384585808",
+          "name": "Yuvan T",
+          "phone": "9162044584",
           "role": "STUDENT"
         }
       ],
@@ -595,17 +596,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. Kanthimathi M",
+          "name": "Arun A",
           "role": "FACULTY"
         },
         {
-          "name": "Sunil Kumar S",
-          "phone": "9345591735",
+          "name": "Pavithra C",
+          "phone": "8028062417",
           "role": "STUDENT"
         },
         {
-          "name": "Uma Maheswari S",
-          "phone": "8667281369",
+          "name": "Yamini A",
+          "phone": "7267325590",
           "role": "STUDENT"
         }
       ],
@@ -642,17 +643,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. Vazhan Arul Santhiya R",
+          "name": "Naveen P",
           "role": "FACULTY"
         },
         {
-          "name": "Dinesh Ram A",
-          "phone": "7339045995",
+          "name": "Nithya B",
+          "phone": "7524482683",
           "role": "STUDENT"
         },
         {
-          "name": "Jaya Chithra N",
-          "phone": "7598661869",
+          "name": "Mohan S",
+          "phone": "9141136175",
           "role": "STUDENT"
         }
       ],
@@ -688,17 +689,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. S. Dheenathayalan",
+          "name": "Sanjay R",
           "role": "FACULTY"
         },
         {
-          "name": "Jesintha Sharon S",
-          "phone": "6379010034",
+          "name": "Ramya C",
+          "phone": "9137914229",
           "role": "STUDENT"
         },
         {
-          "name": "Karan S",
-          "phone": "9566791735",
+          "name": "Ramya M",
+          "phone": "6248863008",
           "role": "STUDENT"
         }
       ],
@@ -735,17 +736,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. G. Pavithra",
+          "name": "Ragul P",
           "role": "FACULTY"
         },
         {
-          "name": "Dhana Karthick S",
-          "phone": "7339293929",
+          "name": "Ragul N",
+          "phone": "7031259158",
           "role": "STUDENT"
         },
         {
-          "name": "Princy Selvarani A",
-          "phone": "7010570442",
+          "name": "Yamini K",
+          "phone": "9296746062",
           "role": "STUDENT"
         }
       ],
@@ -783,17 +784,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. M. Manimegalai",
+          "name": "Dinesh E",
           "role": "FACULTY"
         },
         {
-          "name": "Vishwa R",
-          "phone": "9626684381",
+          "name": "Meena P",
+          "phone": "6167410853",
           "role": "STUDENT"
         },
         {
-          "name": "Jude Iyadurai I",
-          "phone": "9361275138",
+          "name": "Ishwarya J",
+          "phone": "6913134365",
           "role": "STUDENT"
         }
       ],
@@ -827,17 +828,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. M. Manimegalai",
+          "name": "Naveen E",
           "role": "FACULTY"
         },
         {
-          "name": "Alex S",
-          "phone": "8220781695",
+          "name": "Arun S",
+          "phone": "6806751675",
           "role": "STUDENT"
         },
         {
-          "name": "Karthicka K",
-          "phone": "9361433616",
+          "name": "Swetha B",
+          "phone": "8468745212",
           "role": "STUDENT"
         }
       ],
@@ -871,17 +872,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. R. Srimathi",
+          "name": "Harini N",
           "role": "FACULTY"
         },
         {
-          "name": "Vasanth Rahul R",
-          "phone": "7708139041",
+          "name": "Hari K",
+          "phone": "9569990592",
           "role": "STUDENT"
         },
         {
-          "name": "Aruna Varshini S",
-          "phone": "9791769009",
+          "name": "Tharun E",
+          "phone": "6859092401",
           "role": "STUDENT"
         }
       ],
@@ -918,17 +919,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. D. Abisha",
+          "name": "Keerthana N",
           "role": "FACULTY"
         },
         {
-          "name": "Jeremiah Sampitch W",
-          "phone": "8754670308",
+          "name": "Madhan N",
+          "phone": "9138711316",
           "role": "STUDENT"
         },
         {
-          "name": "Subalakshmi A",
-          "phone": "8825769163",
+          "name": "Sanjay R",
+          "phone": "7255434398",
           "role": "STUDENT"
         }
       ],
@@ -959,21 +960,21 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. R. Rajakumari, AP(SG) / CSE",
+          "name": "Saranya V",
           "role": "FACULTY"
         },
         {
-          "name": "Ms. S. Santhi (AP / IT)",
+          "name": "Sanjay N",
           "role": "FACULTY"
         },
         {
-          "name": "Srinidhi S",
-          "phone": "7339120840",
+          "name": "Sneha N",
+          "phone": "8724228737",
           "role": "STUDENT"
         },
         {
-          "name": "Madhumitha A",
-          "phone": "8610621394",
+          "name": "Dinesh E",
+          "phone": "9699569243",
           "role": "STUDENT"
         }
       ],
@@ -1011,17 +1012,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "S. Kalaiselvi (Associate Professor, CSE)",
+          "name": "Vignesh D",
           "role": "FACULTY"
         },
         {
-          "name": "Arul N V",
-          "phone": "8148831608",
+          "name": "Arun R",
+          "phone": "9327120884",
           "role": "STUDENT"
         },
         {
-          "name": "Lohesh R S",
-          "phone": "6383246770",
+          "name": "Ishwarya G",
+          "phone": "7535276197",
           "role": "STUDENT"
         }
       ],
@@ -1055,17 +1056,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. R. Srimathi",
+          "name": "Pavithra B",
           "role": "FACULTY"
         },
         {
-          "name": "Rajesh M",
-          "phone": "9791932347",
+          "name": "Meena R",
+          "phone": "9231890431",
           "role": "STUDENT"
         },
         {
-          "name": "Saranya Meenatchi",
-          "phone": "9688335233",
+          "name": "Lokesh R",
+          "phone": "7556085455",
           "role": "STUDENT"
         }
       ],
@@ -1099,17 +1100,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. Janani Ratthna S G",
+          "name": "Surya T",
           "role": "FACULTY"
         },
         {
-          "name": "Sankar M",
-          "phone": "9952859209",
+          "name": "Sowmya S",
+          "phone": "7035355876",
           "role": "STUDENT"
         },
         {
-          "name": "Pon Selvam S",
-          "phone": "7339163149",
+          "name": "Yuvan R",
+          "phone": "7384923419",
           "role": "STUDENT"
         }
       ],
@@ -1143,17 +1144,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. Pappathi Jancy Rani M",
+          "name": "Vinoth E",
           "role": "FACULTY"
         },
         {
-          "name": "Sankareswari M",
-          "phone": "8056831984",
+          "name": "Tharun G",
+          "phone": "8281456568",
           "role": "STUDENT"
         },
         {
-          "name": "Karan Mohan M",
-          "phone": "8248644914",
+          "name": "Ishwarya N",
+          "phone": "6974654250",
           "role": "STUDENT"
         }
       ],
@@ -1193,17 +1194,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. R. Navedha Evanjalin",
+          "name": "Divya N",
           "role": "FACULTY"
         },
         {
-          "name": "Sounder Raj M",
-          "phone": "7539926522",
+          "name": "Kavya C",
+          "phone": "6700377886",
           "role": "STUDENT"
         },
         {
-          "name": "Koushika Ram G",
-          "phone": "9345504348",
+          "name": "Dinesh S",
+          "phone": "8761026063",
           "role": "STUDENT"
         }
       ],
@@ -1238,17 +1239,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Priyadharshini",
+          "name": "Bala V",
           "role": "FACULTY"
         },
         {
-          "name": "Akshay Sudhan T",
-          "phone": "7907579348",
+          "name": "Vasanth M",
+          "phone": "7270718889",
           "role": "STUDENT"
         },
         {
-          "name": "Deepika A",
-          "phone": "7598657374",
+          "name": "Bharath R",
+          "phone": "8030170291",
           "role": "STUDENT"
         }
       ],
@@ -1284,17 +1285,17 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. Mahalakshmi M",
+          "name": "Ramya K",
           "role": "FACULTY"
         },
         {
-          "name": "Ashwin Nithish Bala P",
-          "phone": "6382317615",
+          "name": "Tharun N",
+          "phone": "8631920497",
           "role": "STUDENT"
         },
         {
-          "name": "Diviya Sri S",
-          "phone": "9080743911",
+          "name": "Lokesh P",
+          "phone": "8708428271",
           "role": "STUDENT"
         }
       ],
@@ -1323,21 +1324,21 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. Karthikeyan J (AP/CSE)",
+          "name": "Yamini K",
           "role": "FACULTY"
         },
         {
-          "name": "Ms. Vazhan Arul Santhiya R (AP/CSE)",
+          "name": "Janani N",
           "role": "FACULTY"
         },
         {
-          "name": "Aruna Varshini S",
-          "phone": "9791769009",
+          "name": "Ramya R",
+          "phone": "8095768575",
           "role": "STUDENT"
         },
         {
-          "name": "Harihara Sudhan M",
-          "phone": "6380816379",
+          "name": "Aishwarya S",
+          "phone": "7213629666",
           "role": "STUDENT"
         }
       ],
@@ -1375,21 +1376,21 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "DR.J.NASKATH",
+          "name": "Dinesh T",
           "role": "FACULTY"
         },
         {
-          "name": "Ms.Mahalakshmi",
+          "name": "Surya R",
           "role": "FACULTY"
         },
         {
-          "name": "Sri Gomathi R",
-          "phone": "9345366383",
+          "name": "Saranya T",
+          "phone": "7552328851",
           "role": "STUDENT"
         },
         {
-          "name": "Samantha S",
-          "phone": "7200897400",
+          "name": "Aishwarya V",
+          "phone": "8676541870",
           "role": "STUDENT"
         }
       ],
@@ -1424,21 +1425,21 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. Karthikeyan J (AP/CSE)",
+          "name": "Harini K",
           "role": "FACULTY"
         },
         {
-          "name": "Ms. Janani Ratthna S G (AP/CSE)",
+          "name": "Pranav S",
           "role": "FACULTY"
         },
         {
-          "name": "Shri Kannan D",
-          "phone": "9080305479",
+          "name": "Priya E",
+          "phone": "7037928294",
           "role": "STUDENT"
         },
         {
-          "name": "Anisha S",
-          "phone": "9363255203",
+          "name": "Pavithra S",
+          "phone": "8489437599",
           "role": "STUDENT"
         }
       ],
@@ -1472,17 +1473,17 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. Vignesh Kandasamy (AP(training) /CSE)",
+          "name": "Bharath N",
           "role": "FACULTY"
         },
         {
-          "name": "Swetha Sri S",
-          "phone": "8667782692",
+          "name": "Gokul V",
+          "phone": "6875559324",
           "role": "STUDENT"
         },
         {
-          "name": "Mithra K",
-          "phone": "7603880216",
+          "name": "Keerthana V",
+          "phone": "6521669398",
           "role": "STUDENT"
         }
       ],
@@ -1523,12 +1524,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. C. Veera Ajay AP/Mech",
+          "name": "Deepak K",
           "role": "FACULTY"
         },
         {
-          "name": "Thegesh",
-          "phone": "9360225110",
+          "name": "Aishwarya V",
+          "phone": "7585042354",
           "role": "STUDENT"
         }
       ],
@@ -1567,12 +1568,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. A. Andrews AP(SG)/Mech",
+          "name": "Dinesh E",
           "role": "FACULTY"
         },
         {
-          "name": "Nithin Ivan A",
-          "phone": "9150783160",
+          "name": "Karthik J",
+          "phone": "6969780774",
           "role": "STUDENT"
         }
       ],
@@ -1608,12 +1609,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. N. Muthu Saravanan AP/Mech",
+          "name": "Arun N",
           "role": "FACULTY"
         },
         {
-          "name": "Vasanth Sankar B",
-          "phone": "9791523100",
+          "name": "Arun B",
+          "phone": "8435870113",
           "role": "STUDENT"
         }
       ],
@@ -1649,12 +1650,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. N. Muthu Saravanan AP/Mech",
+          "name": "Mohan G",
           "role": "FACULTY"
         },
         {
-          "name": "Sathya Seelan G",
-          "phone": "6382820726",
+          "name": "Pavithra N",
+          "phone": "7371688009",
           "role": "STUDENT"
         }
       ],
@@ -1690,12 +1691,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. B. Prince Abraham AP/Mech",
+          "name": "Yuvan J",
           "role": "FACULTY"
         },
         {
-          "name": "Johanan S A",
-          "phone": "7418308109",
+          "name": "Vasanth G",
+          "phone": "7985085266",
           "role": "STUDENT"
         }
       ],
@@ -1731,12 +1732,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. B. Prince Abraham AP/Mech",
+          "name": "Vinoth R",
           "role": "FACULTY"
         },
         {
-          "name": "Guhan S",
-          "phone": "9080834241",
+          "name": "Priya M",
+          "phone": "8440382053",
           "role": "STUDENT"
         }
       ],
@@ -1772,12 +1773,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. K. Thoufiq Mohammed AP(SG) / Mech",
+          "name": "Saranya P",
           "role": "FACULTY"
         },
         {
-          "name": "Balaji K",
-          "phone": "9361925522",
+          "name": "Charan K",
+          "phone": "7306647506",
           "role": "STUDENT"
         }
       ],
@@ -1812,12 +1813,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. M. Rajeshwari AP/Mech",
+          "name": "Swetha J",
           "role": "FACULTY"
         },
         {
-          "name": "Seeninvasan S",
-          "phone": "7904224539",
+          "name": "Sneha S",
+          "phone": "7364094009",
           "role": "STUDENT"
         }
       ],
@@ -1854,12 +1855,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. M. Rajeshwari AP/Mech",
+          "name": "Shalini R",
           "role": "FACULTY"
         },
         {
-          "name": "Pone Sorna Mugesh P",
-          "phone": "6383114254",
+          "name": "Divya T",
+          "phone": "8312302537",
           "role": "STUDENT"
         }
       ],
@@ -1896,12 +1897,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. N. Muthu Saravanan AP/Mech",
+          "name": "Arun T",
           "role": "FACULTY"
         },
         {
-          "name": "Maragatha Guru R",
-          "phone": "8508975135",
+          "name": "Divya N",
+          "phone": "8145382516",
           "role": "STUDENT"
         }
       ],
@@ -1930,12 +1931,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. C. Veera Ajay AP/Mech",
+          "name": "Meena J",
           "role": "FACULTY"
         },
         {
-          "name": "Mahesh Kumar M",
-          "phone": "7358897167",
+          "name": "Divya T",
+          "phone": "6383058302",
           "role": "STUDENT"
         }
       ],
@@ -1972,12 +1973,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs S.Pricilla Mary AP/ECE",
+          "name": "Vasanth V",
           "role": "FACULTY"
         },
         {
-          "name": "Shivagam",
-          "phone": "8300327157",
+          "name": "Vinoth M",
+          "phone": "8662066729",
           "role": "STUDENT"
         }
       ],
@@ -2010,12 +2011,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. K.Subramanian AP(SG)/ECE",
+          "name": "Pavithra E",
           "role": "FACULTY"
         },
         {
-          "name": "Jumana Maryam M",
-          "phone": "9489828538",
+          "name": "Pranav B",
+          "phone": "9851580932",
           "role": "STUDENT"
         }
       ],
@@ -2047,12 +2048,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr.M.Sathish Kumar,AP(SG)/ECE",
+          "name": "Mohan D",
           "role": "FACULTY"
         },
         {
-          "name": "Arumukam Ganes Moorthe V",
-          "phone": "7708112053",
+          "name": "Kavya N",
+          "phone": "8156170457",
           "role": "STUDENT"
         }
       ],
@@ -2084,12 +2085,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr.I.Vivek Anand, AP(SG)/ECE",
+          "name": "Ramya C",
           "role": "FACULTY"
         },
         {
-          "name": "Arun Karthik A",
-          "phone": "9543322330",
+          "name": "Bharath T",
+          "phone": "8398046526",
           "role": "STUDENT"
         }
       ],
@@ -2121,12 +2122,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.C.Kalieswari, AP/ECE",
+          "name": "Arun D",
           "role": "FACULTY"
         },
         {
-          "name": "Guru Akash S V J",
-          "phone": "8098809543",
+          "name": "Swetha K",
+          "phone": "9877212097",
           "role": "STUDENT"
         }
       ],
@@ -2159,12 +2160,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. R. Manjula Devi, AP(SG)/ECE",
+          "name": "Shalini D",
           "role": "FACULTY"
         },
         {
-          "name": "Shenbaga Nandhini. A",
-          "phone": "9344894785",
+          "name": "Gokul R",
+          "phone": "7422897928",
           "role": "STUDENT"
         }
       ],
@@ -2195,12 +2196,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. S.Malathi , AP/ECE",
+          "name": "Ishwarya E",
           "role": "FACULTY"
         },
         {
-          "name": "Sanjay kumar A",
-          "phone": "8778236050",
+          "name": "Sowmya C",
+          "phone": "9185738629",
           "role": "STUDENT"
         }
       ],
@@ -2231,12 +2232,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.G.Akalya Devi AP/ECE",
+          "name": "Nandhini C",
           "role": "FACULTY"
         },
         {
-          "name": "G.K.UKESH KARTHIKEYAN",
-          "phone": "7540063855",
+          "name": "Pavithra G",
+          "phone": "8026022192",
           "role": "STUDENT"
         }
       ],
@@ -2268,12 +2269,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.C.K.Balasundari, AP/ECE",
+          "name": "Meena A",
           "role": "FACULTY"
         },
         {
-          "name": "Hema Rubini M",
-          "phone": "7010355129",
+          "name": "Vinoth A",
+          "phone": "8484885147",
           "role": "STUDENT"
         }
       ],
@@ -2305,12 +2306,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.K.Karthika,AP/ECE",
+          "name": "Karthik M",
           "role": "FACULTY"
         },
         {
-          "name": "Uma R",
-          "phone": "9363574981",
+          "name": "Swetha K",
+          "phone": "9048709586",
           "role": "STUDENT"
         }
       ],
@@ -2341,12 +2342,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Assistant professor S.Camillus",
+          "name": "Lokesh J",
           "role": "FACULTY"
         },
         {
-          "name": "Dhiviya J",
-          "phone": "9524258709",
+          "name": "Pavithra C",
+          "phone": "7671991150",
           "role": "STUDENT"
         }
       ],
@@ -2378,12 +2379,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr.S.Subaselvi, AP/ECE",
+          "name": "Hari C",
           "role": "FACULTY"
         },
         {
-          "name": "Akshaya S",
-          "phone": "9698371424",
+          "name": "Madhan R",
+          "phone": "9189248355",
           "role": "STUDENT"
         }
       ],
@@ -2414,12 +2415,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.G.Akalya Devi AP/ECE",
+          "name": "Vasanth T",
           "role": "FACULTY"
         },
         {
-          "name": "Sornagomathi Balasubramanian",
-          "phone": "6369062219",
+          "name": "Mohan C",
+          "phone": "6476787693",
           "role": "STUDENT"
         }
       ],
@@ -2451,12 +2452,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.P.Arishenbagam AP/ECE",
+          "name": "Pranav B",
           "role": "FACULTY"
         },
         {
-          "name": "Kaleeswari B",
-          "phone": "8148920230",
+          "name": "Priya B",
+          "phone": "7847702389",
           "role": "STUDENT"
         }
       ],
@@ -2485,17 +2486,17 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "DR. A. Saravana Selvan",
+          "name": "Sneha V",
           "role": "FACULTY"
         },
         {
-          "name": "S. Sankar",
-          "phone": "9087137622",
+          "name": "Surya J",
+          "phone": "7287028334",
           "role": "STUDENT"
         },
         {
-          "name": "N. Renganathan",
-          "phone": "8667018382",
+          "name": "Divya E",
+          "phone": "9843358030",
           "role": "STUDENT"
         }
       ],
@@ -2529,12 +2530,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. T. Devakumar",
+          "name": "Ishwarya E",
           "role": "FACULTY"
         },
         {
-          "name": "Manikandan V",
-          "phone": "9342057131",
+          "name": "Meena K",
+          "phone": "6154744231",
           "role": "STUDENT"
         }
       ],
@@ -2568,16 +2569,16 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Ms. S. Priscilla Mary, AP/ECE",
+          "name": "Keerthana N",
           "role": "FACULTY"
         },
         {
-          "name": "Dr. S. Subaselvi, AP/ECE",
+          "name": "Tharun T",
           "role": "FACULTY"
         },
         {
-          "name": "E. Petchi Prabakaran",
-          "phone": "9344518072",
+          "name": "Yamini G",
+          "phone": "7131459918",
           "role": "STUDENT"
         }
       ],
@@ -2613,12 +2614,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. B. Ganapathy Ram, AP(SG)/ECE",
+          "name": "Surya P",
           "role": "FACULTY"
         },
         {
-          "name": "Harihara Sudhan A",
-          "phone": "8072771323",
+          "name": "Janani C",
+          "phone": "6086988306",
           "role": "STUDENT"
         }
       ],
@@ -2658,12 +2659,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. K. Karthik Kumar, AP/EEE",
+          "name": "Hari P",
           "role": "FACULTY"
         },
         {
-          "name": "Keerthika S",
-          "phone": "7094882206",
+          "name": "Kavya E",
+          "phone": "8686977010",
           "role": "STUDENT"
         }
       ],
@@ -2700,12 +2701,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. M. Gengaraj, AP(SG)/EEE",
+          "name": "Ishwarya M",
           "role": "FACULTY"
         },
         {
-          "name": "Shanmugavel S",
-          "phone": "7639519852",
+          "name": "Bharath N",
+          "phone": "7803704713",
           "role": "STUDENT"
         }
       ],
@@ -2743,12 +2744,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. B. Vigneshwaran, Asso.Prof/EEE",
+          "name": "Nandhini T",
           "role": "FACULTY"
         },
         {
-          "name": "Madhubala S",
-          "phone": "7418323003",
+          "name": "Ishwarya T",
+          "phone": "7155527358",
           "role": "STUDENT"
         }
       ],
@@ -2786,12 +2787,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mrs. C. Dhanalakshmi, AP/EEE",
+          "name": "Vasanth N",
           "role": "FACULTY"
         },
         {
-          "name": "Sasi Kumar S",
-          "phone": "9361922379",
+          "name": "Meena G",
+          "phone": "6262714266",
           "role": "STUDENT"
         }
       ],
@@ -2829,12 +2830,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. K. Kumar, AP/EEE",
+          "name": "Vinoth N",
           "role": "FACULTY"
         },
         {
-          "name": "Santhosh Kumar M",
-          "phone": "6381867074",
+          "name": "Sneha B",
+          "phone": "9647489688",
           "role": "STUDENT"
         }
       ],
@@ -2869,12 +2870,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. P. Samuel Pakianathan, AP(SG)/EEE",
+          "name": "Arun J",
           "role": "FACULTY"
         },
         {
-          "name": "Nandhana P",
-          "phone": "7845243046",
+          "name": "Surya E",
+          "phone": "7603801702",
           "role": "STUDENT"
         }
       ],
@@ -2911,12 +2912,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. M. Sivapalanirajan, AP/EEE",
+          "name": "Harini A",
           "role": "FACULTY"
         },
         {
-          "name": "Reginold A",
-          "phone": "9360665059",
+          "name": "Nandhini K",
+          "phone": "8575722955",
           "role": "STUDENT"
         }
       ],
@@ -2955,12 +2956,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. P. Samuel Pakianathan, AP(SG)/EEE",
+          "name": "Dinesh P",
           "role": "FACULTY"
         },
         {
-          "name": "Sujay Chandran R",
-          "phone": "9865036195",
+          "name": "Hari J",
+          "phone": "6244231768",
           "role": "STUDENT"
         }
       ],
@@ -2997,12 +2998,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. K. Kumar, AP/EEE",
+          "name": "Yamini V",
           "role": "FACULTY"
         },
         {
-          "name": "Abinaya C",
-          "phone": "8668192531",
+          "name": "Yamini G",
+          "phone": "7070809185",
           "role": "STUDENT"
         }
       ],
@@ -3035,12 +3036,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. M. Sivapalanirajan, AP/EEE",
+          "name": "Kavya T",
           "role": "FACULTY"
         },
         {
-          "name": "Bharanisree V",
-          "phone": "9514510063",
+          "name": "Surya V",
+          "phone": "7626492511",
           "role": "STUDENT"
         }
       ],
@@ -3074,12 +3075,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. F. Antony Jeffrey Vaz, AP/EEE",
+          "name": "Bala A",
           "role": "FACULTY"
         },
         {
-          "name": "Madhavan R",
-          "phone": "6379816912",
+          "name": "Gokul A",
+          "phone": "6001152244",
           "role": "STUDENT"
         }
       ],
@@ -3112,12 +3113,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. F.X. Edwin Deepak, AP/EEE",
+          "name": "Ramya M",
           "role": "FACULTY"
         },
         {
-          "name": "Snowin Rubiha J",
-          "phone": "8015811303",
+          "name": "Ragul J",
+          "phone": "8945288014",
           "role": "STUDENT"
         }
       ],
@@ -3150,12 +3151,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. B. Venkatasamy, AP(SG)/EEE",
+          "name": "Dinesh M",
           "role": "FACULTY"
         },
         {
-          "name": "Afrinaa M",
-          "phone": "9345378829",
+          "name": "Harini K",
+          "phone": "6215374301",
           "role": "STUDENT"
         }
       ],
@@ -3184,12 +3185,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr. B. Venkatasamy, AP(SG)/EEE",
+          "name": "Saranya E",
           "role": "FACULTY"
         },
         {
-          "name": "Reginold A",
-          "phone": "9360665059",
+          "name": "Nandhini K",
+          "phone": "7694140551",
           "role": "STUDENT"
         }
       ],
@@ -3221,12 +3222,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr. B. Vigneshwaran, Asso.Prof/EEE",
+          "name": "Karthik S",
           "role": "FACULTY"
         },
         {
-          "name": "Madhubala S",
-          "phone": "7418323003",
+          "name": "Shalini T",
+          "phone": "7769785514",
           "role": "STUDENT"
         }
       ],
@@ -3260,12 +3261,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr. S. Sankarakumar, AP(SG)/EEE",
+          "name": "Gokul K",
           "role": "FACULTY"
         },
         {
-          "name": "Sivaranjani C",
-          "phone": "8838600516",
+          "name": "Sneha G",
+          "phone": "6695512760",
           "role": "STUDENT"
         }
       ],
@@ -3299,12 +3300,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. K. Karthik Kumar, AP/EEE",
+          "name": "Sneha C",
           "role": "FACULTY"
         },
         {
-          "name": "Abhishek Naykar",
-          "phone": "8459765629",
+          "name": "Naveen D",
+          "phone": "8040026148",
           "role": "STUDENT"
         }
       ],
@@ -3338,12 +3339,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. M. Sivapalanirajan, AP/EEE",
+          "name": "Priya E",
           "role": "FACULTY"
         },
         {
-          "name": "Esakki Dhas M",
-          "phone": "8838597859",
+          "name": "Arun E",
+          "phone": "6037641857",
           "role": "STUDENT"
         }
       ],
@@ -3388,12 +3389,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. S. Kannan (AP/ Civil)",
+          "name": "Swetha K",
           "role": "FACULTY"
         },
         {
-          "name": "Harine R",
-          "phone": "8248312020",
+          "name": "Surya T",
+          "phone": "7095012445",
           "role": "STUDENT"
         }
       ],
@@ -3428,12 +3429,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. V. Kannan (Professor, Civil)",
+          "name": "Tharun A",
           "role": "FACULTY"
         },
         {
-          "name": "Armuga Parbhu J",
-          "phone": "7092682507",
+          "name": "Madhan B",
+          "phone": "7837851730",
           "role": "STUDENT"
         }
       ],
@@ -3466,12 +3467,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. M. Ashok Pandian (AP/Civil)",
+          "name": "Vignesh N",
           "role": "FACULTY"
         },
         {
-          "name": "S. Kumaranatarajan",
-          "phone": "9344738380",
+          "name": "Sneha C",
+          "phone": "9672843745",
           "role": "STUDENT"
         }
       ],
@@ -3509,12 +3510,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. Gowtham B",
+          "name": "Pranav B",
           "role": "FACULTY"
         },
         {
-          "name": "Srinithi S",
-          "phone": "9629694975",
+          "name": "Naveen S",
+          "phone": "8495923295",
           "role": "STUDENT"
         }
       ],
@@ -3555,12 +3556,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. S. Harshini A/P Civil",
+          "name": "Vasanth T",
           "role": "FACULTY"
         },
         {
-          "name": "Pavya A",
-          "phone": "8056968029",
+          "name": "Dinesh E",
+          "phone": "7931526915",
           "role": "STUDENT"
         }
       ],
@@ -3600,12 +3601,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. Bala Murali G",
+          "name": "Mohan D",
           "role": "FACULTY"
         },
         {
-          "name": "Subramanian N",
-          "phone": "8148610845",
+          "name": "Yuvan M",
+          "phone": "8083995741",
           "role": "STUDENT"
         }
       ],
@@ -3646,12 +3647,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. Marimuthu (A/P, Civil)",
+          "name": "Bala E",
           "role": "FACULTY"
         },
         {
-          "name": "Shiva Dharshini T",
-          "phone": "7845611689",
+          "name": "Nandhini T",
+          "phone": "9244182217",
           "role": "STUDENT"
         }
       ],
@@ -3688,12 +3689,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. K. Ramani (AP/Civil)",
+          "name": "Kavya M",
           "role": "FACULTY"
         },
         {
-          "name": "Haleelur Rahman T",
-          "phone": "9965603069",
+          "name": "Priya V",
+          "phone": "9035040693",
           "role": "STUDENT"
         }
       ],
@@ -3735,12 +3736,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. KASIRAJAN P",
+          "name": "Sanjay T",
           "role": "FACULTY"
         },
         {
-          "name": "S. AKSHAYA",
-          "phone": "8072343772",
+          "name": "Swetha D",
+          "phone": "9512741244",
           "role": "STUDENT"
         }
       ],
@@ -3769,12 +3770,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. K. Marimuthu, AP/Civil",
+          "name": "Harini E",
           "role": "FACULTY"
         },
         {
-          "name": "Soorya V.A",
-          "phone": "8754997131",
+          "name": "Sneha A",
+          "phone": "9802265885",
           "role": "STUDENT"
         }
       ],
@@ -3808,12 +3809,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mr. V. Arulpandian, AP/Civil",
+          "name": "Swetha J",
           "role": "FACULTY"
         },
         {
-          "name": "T. Yuvasri",
-          "phone": "9080178579",
+          "name": "Aishwarya M",
+          "phone": "7785602514",
           "role": "STUDENT"
         }
       ],
@@ -3847,12 +3848,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Mrs. M. Balamaheswari, AP/Civil",
+          "name": "Naveen T",
           "role": "FACULTY"
         },
         {
-          "name": "Vasanth M",
-          "phone": "9345508862",
+          "name": "Sowmya N",
+          "phone": "6896927039",
           "role": "STUDENT"
         }
       ],
@@ -3896,12 +3897,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Yamini T",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Charan T",
+          "phone": "9095206221",
           "role": "STUDENT"
         }
       ],
@@ -3936,12 +3937,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.K.Poorani, AP/AI&DS",
+          "name": "Tharun R",
           "role": "FACULTY"
         },
         {
-          "name": "E.Vignesh",
-          "phone": "8286354549",
+          "name": "Pavithra C",
+          "phone": "7324734964",
           "role": "STUDENT"
         }
       ],
@@ -3979,12 +3980,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Mohan B",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Vinoth B",
+          "phone": "9329575343",
           "role": "STUDENT"
         }
       ],
@@ -4020,12 +4021,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.K.Poorani, AP/AI&DS",
+          "name": "Arun T",
           "role": "FACULTY"
         },
         {
-          "name": "E.Vignesh",
-          "phone": "8286354549",
+          "name": "Yamini N",
+          "phone": "7459611241",
           "role": "STUDENT"
         }
       ],
@@ -4061,12 +4062,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Sneha B",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Aishwarya T",
+          "phone": "7156457417",
           "role": "STUDENT"
         }
       ],
@@ -4103,12 +4104,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Madhan K",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Aishwarya S",
+          "phone": "8919384288",
           "role": "STUDENT"
         }
       ],
@@ -4143,12 +4144,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Pavithra B",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Mohan T",
+          "phone": "8517579052",
           "role": "STUDENT"
         }
       ],
@@ -4183,12 +4184,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Shalini B",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Vasanth N",
+          "phone": "8198982157",
           "role": "STUDENT"
         }
       ],
@@ -4223,12 +4224,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Charan A",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Sowmya P",
+          "phone": "6715054127",
           "role": "STUDENT"
         }
       ],
@@ -4258,12 +4259,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Ms. P. Rampriya, AP/AI&DS",
+          "name": "Bharath M",
           "role": "FACULTY"
         },
         {
-          "name": "Malaiarasu G",
-          "phone": "8270484867",
+          "name": "Swetha V",
+          "phone": "9124067623",
           "role": "STUDENT"
         }
       ],
@@ -4297,12 +4298,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Ms.K.Poorani, AP/AI&DS",
+          "name": "Bala P",
           "role": "FACULTY"
         },
         {
-          "name": "E.Vignesh",
-          "phone": "8286354549",
+          "name": "Surya R",
+          "phone": "9929653264",
           "role": "STUDENT"
         }
       ],
@@ -4337,12 +4338,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Ms.K.Poorani, AP/AI&DS",
+          "name": "Priya N",
           "role": "FACULTY"
         },
         {
-          "name": "E.Vignesh",
-          "phone": "8286354549",
+          "name": "Swetha B",
+          "phone": "9262161402",
           "role": "STUDENT"
         }
       ],
@@ -4381,12 +4382,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr.Sivabalan",
+          "name": "Ishwarya C",
           "role": "FACULTY"
         },
         {
-          "name": "Ms.T.Hareni",
-          "phone": "9597297700",
+          "name": "Surya B",
+          "phone": "8755582904",
           "role": "STUDENT"
         }
       ],
@@ -4441,16 +4442,16 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr.P.GANAPATHY AP/SH",
+          "name": "Sathish V",
           "role": "FACULTY"
         },
         {
-          "name": "Ms.P.DHARANI AP/S&H",
+          "name": "Yuvan R",
           "role": "FACULTY"
         },
         {
-          "name": "Mr.R.GURUSIVABALAN, Mech",
-          "phone": "9597089504",
+          "name": "Dinesh E",
+          "phone": "6939925205",
           "role": "STUDENT"
         }
       ],
@@ -4488,12 +4489,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr.M.Aravind",
+          "name": "Priya K",
           "role": "FACULTY"
         },
         {
-          "name": "G.Nandhini",
-          "phone": "7418894891",
+          "name": "Dinesh S",
+          "phone": "9641549084",
           "role": "STUDENT"
         }
       ],
@@ -4525,16 +4526,16 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms.S.Gopika Devi",
+          "name": "Pavithra J",
           "role": "FACULTY"
         },
         {
-          "name": "Mr.Karthik",
+          "name": "Vignesh B",
           "role": "FACULTY"
         },
         {
-          "name": "Mr.A.Jeno Kevin",
-          "phone": "9600786645",
+          "name": "Sowmya K",
+          "phone": "8462055133",
           "role": "STUDENT"
         }
       ],
@@ -4569,12 +4570,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. S. Jeba",
+          "name": "Madhan M",
           "role": "FACULTY"
         },
         {
-          "name": "M. Sankar",
-          "phone": "9952044102",
+          "name": "Bharath R",
+          "phone": "7879228888",
           "role": "STUDENT"
         }
       ],
@@ -4610,12 +4611,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr. M.Annapoopathy",
+          "name": "Ishwarya E",
           "role": "FACULTY"
         },
         {
-          "name": "Renuga devi S",
-          "phone": "9025286513",
+          "name": "Lokesh M",
+          "phone": "9507739438",
           "role": "STUDENT"
         }
       ],
@@ -4650,12 +4651,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Ms. P. Dharani AP",
+          "name": "Vinoth S",
           "role": "FACULTY"
         },
         {
-          "name": "S Suriya",
-          "phone": "7418721670",
+          "name": "Bharath G",
+          "phone": "6947640419",
           "role": "STUDENT"
         }
       ],
@@ -4692,12 +4693,12 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Dr.APV Rakkini",
+          "name": "Nithya C",
           "role": "FACULTY"
         },
         {
-          "name": "Dhessiha L",
-          "phone": "9843096543",
+          "name": "Sowmya S",
+          "phone": "9260953678",
           "role": "STUDENT"
         }
       ],
@@ -4726,12 +4727,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr.S.S.Basitha Parveen",
+          "name": "Surya V",
           "role": "FACULTY"
         },
         {
-          "name": "S.Gomathisankar",
-          "phone": "6374367922",
+          "name": "Saranya T",
+          "phone": "7252705573",
           "role": "STUDENT"
         }
       ],
@@ -4763,12 +4764,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr.V.T.Srisuvetha",
+          "name": "Sanjay J",
           "role": "FACULTY"
         },
         {
-          "name": "Sujith Kumar",
-          "phone": "8248166737",
+          "name": "Pranav T",
+          "phone": "6898617081",
           "role": "STUDENT"
         }
       ],
@@ -4802,12 +4803,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr.S.Maheswari",
+          "name": "Vignesh P",
           "role": "FACULTY"
         },
         {
-          "name": "Keerthana",
-          "phone": "9361411047",
+          "name": "Divya D",
+          "phone": "7574456401",
           "role": "STUDENT"
         }
       ],
@@ -4839,12 +4840,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr.S.Chithrai Kumar",
+          "name": "Madhan N",
           "role": "FACULTY"
         },
         {
-          "name": "Mr. Balamurugan",
-          "phone": "9362885141",
+          "name": "Charan G",
+          "phone": "7497664957",
           "role": "STUDENT"
         }
       ],
@@ -4876,12 +4877,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr.M.Dhivya",
+          "name": "Tharun T",
           "role": "FACULTY"
         },
         {
-          "name": "Mr.P.Abraham",
-          "phone": "9487880943",
+          "name": "Aishwarya M",
+          "phone": "6565070328",
           "role": "STUDENT"
         }
       ],
@@ -4922,7 +4923,7 @@
       "seatsTotal": null,
       "coordinators": [
         {
-          "name": "Mr. Thoufiq AP/MECH",
+          "name": "Ramya S",
           "role": "FACULTY"
         }
       ],
@@ -4953,12 +4954,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr. K. Thoufiq Mohammed",
+          "name": "Kavya R",
           "role": "FACULTY"
         },
         {
-          "name": "Nithin Ivan A",
-          "phone": "9150783160",
+          "name": "Ramya E",
+          "phone": "9785008359",
           "role": "STUDENT"
         }
       ],
@@ -4994,12 +4995,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr. I. Sankar",
+          "name": "Tharun S",
           "role": "FACULTY"
         },
         {
-          "name": "Johanan",
-          "phone": "7418308109",
+          "name": "Dinesh D",
+          "phone": "8639394032",
           "role": "STUDENT"
         }
       ],
@@ -5035,12 +5036,12 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Dr. M. Kathiresan",
+          "name": "Bharath E",
           "role": "FACULTY"
         },
         {
-          "name": "Sathya Seelan G",
-          "phone": "6382820726",
+          "name": "Aishwarya B",
+          "phone": "8116388275",
           "role": "STUDENT"
         }
       ],
@@ -5074,8 +5075,8 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Lalitha S",
-          "phone": "8870245935",
+          "name": "Vinoth R",
+          "phone": "7103709901",
           "role": "STUDENT"
         }
       ],
@@ -5109,8 +5110,8 @@
       "seatsTotal": 30,
       "coordinators": [
         {
-          "name": "Lalitha S",
-          "phone": "8870245935",
+          "name": "Yamini P",
+          "phone": "8333228529",
           "role": "STUDENT"
         }
       ],

@@ -172,7 +172,10 @@ describe('public catalogue', () => {
       fest: { slug: LIVE_FEST, status: 'COMPLETED' },
     });
     expect(r.body.rules).toHaveLength(2);
-    expect(r.body.coordinators[1]).toEqual({ name: 'Manoj Kumar B', phone: '8220605419', role: 'STUDENT' });
+    // Sample people from the seed file (made up, not the real coordinators).
+    const sample = SEED.events.find((x: any) => x.slug === 'blind-coding').coordinators[1];
+    expect(r.body.coordinators[1]).toEqual({ name: sample.name, phone: sample.phone, role: 'STUDENT' });
+    expect(sample.name).not.toBe('Manoj Kumar B');
     expect((await client(t.app).get(`/global-events/${LIVE_FEST}/events/nope`)).status).toBe(404);
   });
 });
