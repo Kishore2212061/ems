@@ -1,5 +1,6 @@
 import type { Role, ScopeType, User, UserRole } from '@/store/auth';
 import { api } from './api';
+import type { Breakdown, FeeSettings } from './fees';
 
 // ── types (mirror the backend's public shapes) ──────────────────────────────
 export type FestStatus = 'DRAFT' | 'PUBLISHED' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED';
@@ -133,6 +134,40 @@ export interface RegistrationPayment {
   mode: 'NONE' | PaymentMode;
   status: PaymentStatus;
   amountPaise: number;
+  /** Base / platform fee / GST as priced when registering (null for free entries made before fees existed). */
+  breakdown?: Breakdown | null;
+}
+
+// ── payments (Module 5) ──
+export interface CheckoutOrder {
+  orderCode: string;
+  /** "mock" = the local simulated gateway (development only). */
+  gateway: 'razorpay' | 'mock';
+  keyId: string;
+  gatewayOrderId: string;
+  amountPaise: number;
+  currency: 'INR';
+  description: string;
+  holdExpiresAt: string;
+  prefill: { name: string; email: string; contact: string };
+}
+
+export interface OrderView {
+  code: string;
+  registrationCode: string;
+  mode: PaymentMode;
+  status: 'CREATED' | 'PAID';
+  amountPaise: number;
+  breakdown: Breakdown;
+  paidAt: string | null;
+  refundStatus: 'NONE' | 'PENDING' | 'DONE' | 'FAILED';
+  createdAt: string;
+  registrationStatus?: RegistrationStatus | null;
+  eventName?: string | null;
+}
+
+export interface OrderPage extends Page<OrderView> {
+  totals?: { onlinePaise: number; onlineCount: number; deskPaise: number; deskCount: number; refunds: number };
 }
 
 export interface Registration {
@@ -315,6 +350,21 @@ export const regApi = {
   mine: () => api.get<{ items: Registration[] }>('/registrations/my'),
   get: (code: string) => api.get<Registration>(`/registrations/${encodeURIComponent(code)}`),
   cancel: (code: string, reason?: string) => api.post<Registration>(`/registrations/${encodeURIComponent(code)}/cancel`, reason ? { reason } : {}),
+};
+
+export const payApi = {
+  fees: () => api.get<FeeSettings>('/fees'),
+  start: (regCode: string) => api.post<CheckoutOrder>(`/registrations/${encodeURIComponent(regCode)}/order`),
+  verify: (orderCode: string, b: { gatewayOrderId: string; paymentId: string; signature: string }) => api.post<OrderView>(`/orders/${orderCode}/verify`, b),
+  status: (orderCode: string) => api.get<OrderView>(`/orders/${orderCode}`),
+  /** Development only: the simulated gateway "pays". */
+  simulate: (orderCode: string) => api.post<{ gatewayOrderId: string; paymentId: string; signature: string }>(`/orders/${orderCode}/simulate`),
+};
+
+export const adminPayApi = {
+  collect: (regCode: string, amountPaise: number) => api.post<OrderView>(`/admin/registrations/${encodeURIComponent(regCode)}/collect`, { amountPaise }),
+  orders: (q: { festId: string; status?: 'CREATED' | 'PAID'; mode?: PaymentMode; cursor?: string }) => api.get<OrderPage>(`/admin/orders${qs(q)}`),
+  setFees: (s: FeeSettings) => api.put<FeeSettings>('/admin/settings/fees', s),
 };
 
 export const adminRegApi = {

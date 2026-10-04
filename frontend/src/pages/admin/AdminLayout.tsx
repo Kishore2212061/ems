@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, type ComponentType, type SVGProps } from 're
 import { Link, Route, Switch, useLocation } from 'wouter';
 import { RoleSwitcher, UserMenu } from '@/components/AppHeader';
 import { Skeleton } from '@/components/data';
-import { BuildingIcon, CalendarIcon, ExternalIcon, GridIcon, MailIcon, UsersIcon } from '@/components/icons';
+import { BuildingIcon, CalendarIcon, ExternalIcon, GridIcon, MailIcon, UsersIcon, WalletIcon } from '@/components/icons';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cx, Logo } from '@/components/ui';
 import { can, canOrgWide, type UiPermission } from '@/lib/permissions';
@@ -17,6 +17,7 @@ const EventRegistrations = lazy(() => import('./EventRegistrations'));
 const Departments = lazy(() => import('./Departments'));
 const Users = lazy(() => import('./Users'));
 const Invites = lazy(() => import('./Invites'));
+const Payments = lazy(() => import('./Payments'));
 
 interface NavItem {
   href: string;
@@ -31,6 +32,7 @@ const NAV: NavItem[] = [
   { href: '/admin/departments', label: 'Departments', icon: BuildingIcon, show: () => true },
   { href: '/admin/users', label: 'People', icon: UsersIcon, show: (u) => canOrgWide(u, 'user.read') },
   { href: '/admin/invites', label: 'Invites', icon: MailIcon, show: (u) => can(u, 'user.invite' as UiPermission) },
+  { href: '/admin/payments', label: 'Payments', icon: WalletIcon, show: (u) => can(u, 'order.read') || can(u, 'settings.manage') },
 ];
 
 const isActive = (loc: string, href: string) => (href === '/admin' ? loc === '/admin' : loc.startsWith(href));
@@ -134,6 +136,7 @@ export default function AdminLayout() {
             <Route path="/admin/departments" component={Departments} />
             <Route path="/admin/users" component={Users} />
             <Route path="/admin/invites" component={Invites} />
+            <Route path="/admin/payments" component={Payments} />
             <Route>
               <p className="text-muted">Page not found.</p>
             </Route>

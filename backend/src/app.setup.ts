@@ -27,6 +27,15 @@ export async function configureApp(app: NestFastifyApplication) {
     .getInstance()
     .addContentTypeParser(/^image\/(jpeg|png|webp|avif)$/, { parseAs: 'buffer', bodyLimit: MAX_IMAGE_BYTES }, (_req, body, done) => done(null, body));
 
+  // JSON: Fastify's safe parser (prototype-poisoning checks), plus the exact bytes for /webhooks/*
+  // only: gateway signatures are computed over the raw body, not re-serialised JSON.
+  const fastify = app.getHttpAdapter().getInstance();
+  const parseJson = fastify.getDefaultJsonParser('error', 'error');
+  app.useBodyParser('application/json', { bodyLimit: 100 * 1024 }, (req, body, done) => {
+    if (req.url.startsWith('/api/v1/webhooks/')) (req as typeof req & { rawBody?: Buffer }).rawBody = body;
+    parseJson(req as never, body as never, done);
+  });
+
   app.setGlobalPrefix('api/v1');
   // Prod traffic is same-origin via nginx; CORS only matters for direct API calls (local tools, previews).
   app.enableCors({ origin: env.CORS_ORIGINS, credentials: true });

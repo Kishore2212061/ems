@@ -5,9 +5,11 @@ import { CheckIcon, MapPinIcon, PlusIcon, UserIcon, WalletIcon } from '@/compone
 import { Dialog } from '@/components/overlay';
 import { Alert, Button, cx, Field } from '@/components/ui';
 import { ApiError } from '@/lib/api';
-import { regApi, rupees, type EventDetail, type PaymentMode, type Registration } from '@/lib/ems-api';
+import { payApi, regApi, rupees, type EventDetail, type PaymentMode, type Registration } from '@/lib/ems-api';
+import { calculateBreakdown, hasExtras } from '@/lib/fees';
 import { fmtWhen } from '@/lib/format';
 import { refreshAfterRegistrationChange } from '@/lib/my-registrations';
+import { useQuery } from '@/lib/query';
 import { useAuth } from '@/store/auth';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,7 +63,10 @@ export default function RegisterSheet({ event: e, open, onClose, onRegistered }:
 
   const size = mates.length + 1;
   const paid = e.pricing.type === 'PAID';
-  const total = paid ? e.pricing.amountPaise * (e.pricing.per === 'MEMBER' ? size : 1) : 0;
+  // Same maths as the server (fees/GST from the org settings; the platform fee only applies online).
+  const { data: fees } = useQuery(paid ? 'public:fees' : null, payApi.fees, { staleMs: 60_000 });
+  const breakdown = calculateBreakdown(paid ? e.pricing.amountPaise * (e.pricing.per === 'MEMBER' ? size : 1) : 0, mode === 'ONLINE', fees ?? { platformFeeBps: 0, platformFeeFlatPaise: 0, gstBps: 0, feeBearer: 'PARTICIPANT' });
+  const total = breakdown.totalPaise;
 
   const setMate = (i: number, k: keyof Mate, v: string) => {
     setMates((m) => m.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -171,6 +176,7 @@ export default function RegisterSheet({ event: e, open, onClose, onRegistered }:
               <>
                 Total <span className="text-lg font-bold text-fg tabular-nums">{rupees(total)}</span>
                 {e.pricing.per === 'MEMBER' && size > 1 && <span className="ml-1">({size} × {rupees(e.pricing.amountPaise)})</span>}
+                {hasExtras(breakdown) && <span className="ml-1">incl. fees & GST</span>}
               </>
             ) : (
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">Free entry</span>

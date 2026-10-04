@@ -557,6 +557,24 @@ Register click
 
 **Goal:** correct paise math with GST, Razorpay checkout, webhook-safe finalisation, and offline pay-at-venue.
 
+> ### ✅ Status: DONE (2026-10-04) · needs Razorpay test keys to take real (test) payments
+> | Area | Result |
+> |---|---|
+> | Backend | Fee engine (pure integer paise, GST on base + platform fee, CGST/SGST or IGST, fee bearer) priced into each registration as a snapshot. Fee settings (public `GET /fees`, Super Admin `PUT /admin/settings/fees`, 60 s cache; default **no fees**). Orders: start/resume checkout (`POST /registrations/:code/order`), verify (constant-time HMAC), status, Razorpay webhook (signature over the **raw body**, deliveries recorded once), `finalise()` = one transaction, safe from verify and webhook in any order. Late payment after the hold ran out → re-seat if possible, else **full refund** (job). Paid twice → second payment refunded. Desk collection (`POST /admin/registrations/:code/collect`, exact amount, once, scoped). Finance list with totals by mode. |
+> | Gateway | Razorpay over plain `fetch` (no SDK; 8 s timeout, one retry on network errors). Without keys, local dev and tests use a **simulated gateway** with the same signatures (refused in production by the env check). |
+> | Frontend | Register sheet totals include fees/GST. Registration page: hold countdown, breakdown, **Pay** → Razorpay Checkout (script injected only then) → verify, with 60 s polling if the network drops; development shows a "Test payment" screen instead. Organisers: **Collect ₹X** at the desk from the registration dialog. Admin **Payments** page: totals (online / desk / refunds), orders, fee settings with a live example. |
+> | Tests | Backend **191** (+14: documented fee example + 10 000-case property test, settings & pricing, checkout → verify once, webhook-only settlement, duplicate deliveries, bad signatures, double payment refund, late payment re-seat vs refund, leader-only, expired hold, desk amount/once/scope, finance totals, index plans). Frontend **70** (+4: fee mirror, pay flow with the simulated gateway). |
+> | Bundle | Initial JS **77.1 KB** (unchanged); registration page 4.1 KB (checkout budget 6), Payments page 2.5 KB; Razorpay script 0 KB in our bundle. |
+>
+> **Decisions**
+> - Platform fee applies to **online** payments only (it covers gateway charges); desk payments pay base (+ GST if set). Interstate (IGST) is supported by the engine but not used yet: we don't collect the participant's state.
+> - The registration stores its own breakdown, so changing fee settings never changes what an existing registrant owes.
+> - A failed payment attempt doesn't fail the order: Razorpay lets the person retry on the same order until the hold ends.
+> - Admins (scoped) can record desk payments (`order.collect_offline`) until the scanner app arrives in Module 7.
+> - Invoice PDFs deferred (no PDF dependency yet); receipts are the confirmation email + registration page.
+>
+> **To take real test payments:** create Razorpay test keys, set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` in `backend/.env`, and point a webhook (events `payment.captured`, `payment.failed`) at `https://<domain>/api/v1/webhooks/razorpay`.
+
 ### 6.1 Fee engine
 `calculateOrderBreakdown()` from the system docs §6, as a pure function in `backend/src/payments/fees.ts`, with **property tests** (random inputs: total = parts, no negatives, CGST+SGST = GST).
 

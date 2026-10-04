@@ -1,4 +1,5 @@
 import { Schema, Types } from 'mongoose';
+import type { Breakdown } from '../payments/fees';
 
 export const REGISTRATION_STATUS = ['PAYMENT_PENDING', 'CONFIRMED', 'CANCELLED', 'EXPIRED'] as const;
 export type RegistrationStatus = (typeof REGISTRATION_STATUS)[number];
@@ -28,7 +29,10 @@ export interface Member {
 export interface Payment {
   mode: PayMode;
   status: PaymentStatus;
+  /** What the participant pays (= breakdown.totalPaise). */
   amount_paise: number;
+  /** Base, platform fee and GST as priced when registering (fee settings can change later). */
+  breakdown?: Breakdown;
   /** The event's price_version when registering: later price changes don't touch this entry. */
   price_version: number;
 }
@@ -79,6 +83,7 @@ const PaymentSchema = new Schema<Payment>(
     mode: { type: String, enum: ['NONE', 'ONLINE', 'OFFLINE'], required: true },
     status: { type: String, enum: PAYMENT_STATUS, required: true },
     amount_paise: { type: Number, default: 0 },
+    breakdown: { type: Schema.Types.Mixed, default: undefined },
     price_version: { type: Number, default: 0 },
   },
   { _id: false },

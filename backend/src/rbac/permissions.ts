@@ -57,6 +57,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> =
     'local_event.cancel',
     'registration.read',
     'registration.manage',
+    'order.collect_offline',
     'checkin.manual',
     'user.read',
     'user.invite',

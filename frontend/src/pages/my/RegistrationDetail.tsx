@@ -5,11 +5,14 @@ import { EmptyState, Skeleton } from '@/components/data';
 import { ClockIcon, GlobeIcon } from '@/components/event-icons';
 import { AlertIcon, ArrowLeftIcon, CheckIcon, CopyIcon, MapPinIcon, TicketIcon, UserIcon } from '@/components/icons';
 import { Badge } from '@/components/layout';
-import { ConfirmDialog } from '@/components/overlay';
+import { ConfirmDialog, Dialog } from '@/components/overlay';
 import { payNote, regBadge } from '@/components/RegistrationRow';
 import { toast } from '@/components/toast';
 import { Alert, Button } from '@/components/ui';
-import { regApi, rupees, type Registration } from '@/lib/ems-api';
+import { ApiError } from '@/lib/api';
+import { confirmPayment, openRazorpay, type PaidResult } from '@/lib/checkout';
+import { payApi, regApi, rupees, type CheckoutOrder, type Registration } from '@/lib/ems-api';
+import { hasExtras } from '@/lib/fees';
 import { fmtCountdown, fmtWhen } from '@/lib/format';
 import { refreshAfterRegistrationChange } from '@/lib/my-registrations';
 import { useMyNav } from '@/lib/nav';
@@ -27,7 +30,107 @@ function useNow(on: boolean) {
   return now;
 }
 
-function StatusPanel({ r, now }: { r: Registration; now: number }) {
+function Breakdown({ b }: { b: NonNullable<Registration['payment']['breakdown']> }) {
+  if (!hasExtras(b)) return null;
+  const row = (label: string, paise: number) =>
+    paise > 0 && (
+      <div className="flex justify-between">
+        <dt className="text-muted">{label}</dt>
+        <dd className="tabular-nums text-fg-2">{rupees(paise)}</dd>
+      </div>
+    );
+  return (
+    <dl className="mt-3 space-y-1 text-sm">
+      {row('Entry fee', b.basePaise)}
+      {row('Platform fee', b.platformFeePaise)}
+      {row('CGST', b.cgstPaise)}
+      {row('SGST', b.sgstPaise)}
+      {row('IGST', b.igstPaise)}
+    </dl>
+  );
+}
+
+/** Online payment: Razorpay Checkout, or the simulated gateway in development. */
+function PayButton({ r, onPaid }: { r: Registration; onPaid: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sim, setSim] = useState<CheckoutOrder | null>(null);
+
+  async function finish(orderCode: string, res: PaidResult) {
+    await confirmPayment(orderCode, res);
+    toast.success("Payment received. You're registered!");
+    onPaid();
+  }
+
+  async function pay() {
+    setBusy(true);
+    setError(null);
+    try {
+      const o = await payApi.start(r.code);
+      if (o.gateway === 'mock') return setSim(o);
+      const res = await openRazorpay(o);
+      if (res) await finish(o.orderCode, res);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Payment could not be completed. Please try again.');
+      if (e instanceof ApiError && e.code === 'HOLD_EXPIRED') onPaid();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function simulate(ok: boolean) {
+    const o = sim!;
+    setSim(null);
+    if (!ok) return setError('Payment cancelled. Your seat is still held until the timer runs out.');
+    setBusy(true);
+    try {
+      const res = await payApi.simulate(o.orderCode);
+      await finish(o.orderCode, res);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Payment failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      {error && (
+        <div className="mt-4">
+          <Alert>{error}</Alert>
+        </div>
+      )}
+      <Button className="mt-4" onClick={pay} loading={busy}>
+        Pay {rupees(r.payment.amountPaise)}
+      </Button>
+      <p className="mt-2 text-center text-xs text-muted">UPI, cards or net banking via Razorpay. Your seat is confirmed the moment payment goes through.</p>
+      {sim && (
+        <Dialog
+          open
+          onClose={() => simulate(false)}
+          title="Test payment"
+          description="Development mode: no real money moves. With Razorpay keys configured, the real payment window opens here."
+          footer={
+            <>
+              <Button variant="secondary" size="sm" block={false} onClick={() => simulate(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" block={false} onClick={() => simulate(true)}>
+                Pay {rupees(sim.amountPaise)} (simulated)
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-fg-2">
+            {sim.description} · order <span className="font-mono">{sim.orderCode}</span>
+          </p>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function StatusPanel({ r, now, onPaid }: { r: Registration; now: number; onPaid: () => void }) {
   const holdLeft = r.holdExpiresAt ? Date.parse(r.holdExpiresAt) - now : 0;
   if (r.event?.status === 'CANCELLED' && r.status !== 'CANCELLED') {
     return <Alert>This event was cancelled by the organisers.{r.payment.status === 'PAID' ? ' Your refund will be processed automatically.' : ''}</Alert>;
@@ -45,14 +148,14 @@ function StatusPanel({ r, now }: { r: Registration; now: number }) {
             {fmtCountdown(holdLeft)}
           </p>
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-amber-500/20 pt-4 text-sm">
-          <span className="text-muted">Amount</span>
-          <span className="text-lg font-bold text-fg tabular-nums">{rupees(r.payment.amountPaise)}</span>
+        <div className="mt-4 border-t border-amber-500/20 pt-4">
+          {r.payment.breakdown && <Breakdown b={r.payment.breakdown} />}
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="font-semibold text-fg">Total</span>
+            <span className="text-lg font-bold text-fg tabular-nums">{rupees(r.payment.amountPaise)}</span>
+          </div>
         </div>
-        <Button className="mt-4" disabled>
-          Pay {rupees(r.payment.amountPaise)}
-        </Button>
-        <p className="mt-2 text-center text-xs text-muted">Online payment isn't switched on yet. If the timer runs out, the seat is released and you can register again.</p>
+        {r.role === 'LEADER' ? <PayButton r={r} onPaid={onPaid} /> : <p className="mt-3 text-sm text-muted">Your team leader completes the payment.</p>}
       </div>
     );
   }
@@ -70,13 +173,15 @@ function StatusPanel({ r, now }: { r: Registration; now: number }) {
   }
   if (r.status === 'CANCELLED') return <Alert tone="info">This registration was cancelled{r.cancelReason ? `: ${r.cancelReason}` : '.'}</Alert>;
   const due = r.payment.status === 'DUE';
+  const paid = r.payment.status === 'PAID';
   return (
     <div className={`rounded-2xl border p-4 sm:p-5 ${due ? 'border-amber-500/30 bg-amber-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
       <p className={`flex items-center gap-2 font-semibold ${due ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'}`}>
         {due ? <AlertIcon className="size-5" /> : <CheckIcon className="size-5" />}
-        {due ? payNote(r) : "You're registered"}
+        {due ? payNote(r) : paid ? `You're registered · ${rupees(r.payment.amountPaise)} paid` : "You're registered"}
       </p>
       <p className="mt-1 text-sm text-muted">{due ? 'Your place is confirmed. Pay at the desk before the event starts and show this code.' : 'Show this code at the registration desk on the day.'}</p>
+      {(due || paid) && r.payment.breakdown && <Breakdown b={r.payment.breakdown} />}
     </div>
   );
 }
@@ -167,7 +272,14 @@ export default function RegistrationDetail() {
               </div>
             </section>
 
-            <StatusPanel r={r} now={now} />
+            <StatusPanel
+              r={r}
+              now={now}
+              onPaid={() => {
+                refetch();
+                refreshAfterRegistrationChange();
+              }}
+            />
 
             <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
               <h2 className="font-bold text-fg">{r.members.length > 1 ? (r.teamName ? `Team ${r.teamName}` : 'Team') : 'Participant'}</h2>

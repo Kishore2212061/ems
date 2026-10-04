@@ -10,6 +10,8 @@ import { GLOBAL_EVENT_MODEL, GlobalEvent } from '../global-events/global-event.s
 import { LOCAL_EVENT_MODEL, LocalEvent, VISIBLE_STATUSES } from '../local-events/local-event.schema';
 import { MailService } from '../mail/mail.service';
 import { registrationCancelledEmail, registrationEmail } from '../mail/templates';
+import { FeeSettingsService } from '../payments/fee-settings.service';
+import { calculateBreakdown } from '../payments/fees';
 import { RbacService } from '../rbac/rbac.service';
 import { USER_MODEL, User } from '../users/user.schema';
 import {
@@ -82,6 +84,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     private readonly rbac: RbacService,
     private readonly audit: AuditService,
     private readonly mail: MailService,
+    private readonly fees: FeeSettingsService,
   ) {}
 
   // ── hold sweeper ──────────────────────────────────────────────────────────
@@ -197,7 +200,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     return [leader, ...mates];
   }
 
-  private payment(ev: EventRow, size: number, chosen: CreateRegistrationDto['paymentMode']): Payment {
+  private async payment(ev: EventRow, size: number, chosen: CreateRegistrationDto['paymentMode']): Promise<Payment> {
     if (ev.pricing.type === 'FREE') return { mode: 'NONE', status: 'NOT_REQUIRED', amount_paise: 0, price_version: ev.price_version };
     const modes = ev.pricing.modes;
     const mode = chosen ?? (modes.length === 1 ? modes[0] : undefined);
@@ -205,8 +208,9 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
       const msg = modes.length > 1 ? 'Choose how you will pay' : `This event is paid ${modes[0] === 'ONLINE' ? 'online' : 'at the registration desk'}`;
       throw Errors.validation({ fields: { paymentMode: msg } });
     }
-    const amount = ev.pricing.amount_paise * (ev.pricing.per === 'MEMBER' ? size : 1);
-    return { mode, status: mode === 'ONLINE' ? 'PENDING' : 'DUE', amount_paise: amount, price_version: ev.price_version };
+    const base = ev.pricing.amount_paise * (ev.pricing.per === 'MEMBER' ? size : 1);
+    const breakdown = calculateBreakdown({ basePaise: base, online: mode === 'ONLINE', settings: await this.fees.get() });
+    return { mode, status: mode === 'ONLINE' ? 'PENDING' : 'DUE', amount_paise: breakdown.totalPaise, breakdown, price_version: ev.price_version };
   }
 
   /**
@@ -229,7 +233,7 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
     this.assertOpen(ev, fest, now);
 
     const members = this.team(ev, me, dto);
-    const payment = this.payment(ev, members.length, dto.paymentMode);
+    const payment = await this.payment(ev, members.length, dto.paymentMode);
     const status: RegistrationStatus = payment.status === 'PENDING' ? 'PAYMENT_PENDING' : 'CONFIRMED';
     const start = ev.starts_at!;
     const end = effectiveEnd(start, ev.ends_at);
@@ -333,6 +337,63 @@ export class RegistrationsService implements OnApplicationBootstrap, OnApplicati
       code: hit.code,
       event: { name: other?.name ?? null, startsAt: hit.starts_at, endsAt: hit.ends_at },
     });
+  }
+
+  /**
+   * Online payment arrived (called inside the payments transaction). The held seat becomes a
+   * confirmed one. If the hold ran out meanwhile, the seat is taken again when one is free and
+   * nobody in the team got busy at that time; otherwise seated=false (the caller refunds).
+   */
+  async confirmPaid(regId: Id, session: ClientSession): Promise<{ reg: Registration | null; seated: boolean }> {
+    const held = await this.regs
+      .findOneAndUpdate(
+        { _id: regId, status: 'PAYMENT_PENDING', active: true },
+        { $set: { status: 'CONFIRMED', 'payment.status': 'PAID', hold_expires_at: null }, $inc: { version: 1 } },
+        { new: true, session },
+      )
+      .lean();
+    if (held) {
+      await this.events.updateOne({ _id: held.local_event_id }, { $inc: { seats_held: -1, seats_confirmed: 1 } }, { session });
+      await this.mailPaid(held, session);
+      return { reg: held, seated: true };
+    }
+    const r = await this.regs.findById(regId).session(session).lean();
+    if (!r) return { reg: null, seated: false };
+    if (r.status === 'CONFIRMED' && r.payment.status === 'PAID') return { reg: r, seated: true };
+    if (r.status !== 'EXPIRED') return { reg: r, seated: false };
+
+    const emails = r.members.map((m) => m.email);
+    const at = new Date();
+    await this.locks.bulkWrite(emails.map((e) => ({ updateOne: { filter: { _id: e }, update: { $inc: { n: 1 }, $set: { at } }, upsert: true } })), { session, ordered: false });
+    const busy = await this.regs
+      .find({ 'members.email': { $in: emails }, starts_at: { $lt: r.ends_at }, ends_at: { $gt: r.starts_at }, active: true, _id: { $ne: r._id } })
+      .select('_id')
+      .limit(1)
+      .session(session)
+      .lean();
+    if (busy.length) return { reg: r, seated: false };
+    const ev = await this.events.findById(r.local_event_id).select('seats_total').session(session).lean();
+    const seatFilter: Record<string, unknown> = { _id: r.local_event_id, status: 'PUBLISHED' };
+    if (ev?.seats_total != null) seatFilter.$expr = { $lt: [{ $add: ['$seats_confirmed', '$seats_held'] }, '$seats_total'] };
+    const seat = await this.events.updateOne(seatFilter, { $inc: { seats_confirmed: 1 } }, { session });
+    if (seat.modifiedCount !== 1) return { reg: r, seated: false };
+    const after = (await this.regs
+      .findOneAndUpdate(
+        { _id: r._id, status: 'EXPIRED' },
+        { $set: { status: 'CONFIRMED', active: true, 'payment.status': 'PAID', hold_expires_at: null }, $inc: { version: 1 } },
+        { new: true, session },
+      )
+      .lean())!;
+    await this.mailPaid(after, session);
+    return { reg: after, seated: true };
+  }
+
+  private async mailPaid(r: Registration, session: ClientSession) {
+    const [ev, fest] = await Promise.all([
+      this.events.findById(r.local_event_id).select(EVENT_FIELDS).session(session).lean<EventRow>(),
+      this.fests.findById(r.global_event_id).select('name').session(session).lean(),
+    ]);
+    if (ev && fest) await this.mailConfirmation(r, ev, fest, session);
   }
 
   private async mailConfirmation(r: Registration, ev: EventRow, fest: Pick<GlobalEvent, 'name'>, session: ClientSession) {
@@ -498,7 +559,7 @@ function toView(r: Registration, email: string, e?: CardEvent, f?: Pick<GlobalEv
     endsAt: r.ends_at,
     teamName: r.team_name ?? null,
     members: r.members.map((m) => ({ name: m.name, email: m.email, leader: m.leader })),
-    payment: { mode: r.payment.mode, status: r.payment.status, amountPaise: r.payment.amount_paise },
+    payment: { mode: r.payment.mode, status: r.payment.status, amountPaise: r.payment.amount_paise, breakdown: r.payment.breakdown ?? null },
     holdExpiresAt: r.hold_expires_at ?? null,
     cancelReason: r.cancel_reason ?? null,
     cancelledAt: r.cancelled_at ?? null,
@@ -530,7 +591,7 @@ function toAdminView(r: Registration) {
     eventId: String(r.local_event_id),
     teamName: r.team_name ?? null,
     members: r.members.map((m) => ({ name: m.name, email: m.email, phone: m.phone ?? null, college: m.college ?? null, leader: m.leader })),
-    payment: { mode: r.payment.mode, status: r.payment.status, amountPaise: r.payment.amount_paise },
+    payment: { mode: r.payment.mode, status: r.payment.status, amountPaise: r.payment.amount_paise, breakdown: r.payment.breakdown ?? null },
     holdExpiresAt: r.hold_expires_at ?? null,
     cancelReason: r.cancel_reason ?? null,
     cancelledAt: r.cancelled_at ?? null,

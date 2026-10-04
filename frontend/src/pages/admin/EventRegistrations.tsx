@@ -8,7 +8,7 @@ import { Dialog } from '@/components/overlay';
 import { toast } from '@/components/toast';
 import { Alert, Button, TextareaField } from '@/components/ui';
 import { ApiError } from '@/lib/api';
-import { adminRegApi, eventApi, rupees, type AdminRegistration, type AdminRegistrationPage, type RegistrationStatus } from '@/lib/ems-api';
+import { adminPayApi, adminRegApi, eventApi, rupees, type AdminRegistration, type AdminRegistrationPage, type RegistrationStatus } from '@/lib/ems-api';
 import { fmtDateTime, fmtWhen, timeAgo } from '@/lib/format';
 import { canOnEvent } from '@/lib/permissions';
 import { invalidate, useQuery } from '@/lib/query';
@@ -114,6 +114,7 @@ export default function EventRegistrations() {
   const counts = summary?.counts ?? {};
   const total = Object.values(counts).reduce((s, n) => s + (n ?? 0), 0);
   const canCancel = !!e && canOnEvent(user, 'registration.manage', festId, e.department?.id ?? null);
+  const canCollect = !!e && canOnEvent(user, 'order.collect_offline', festId, e.department?.id ?? null);
   const seats = summary?.seats;
 
   return (
@@ -196,6 +197,7 @@ export default function EventRegistrations() {
       <RegistrationDialog
         r={open}
         canCancel={canCancel}
+        canCollect={canCollect}
         onClose={() => setOpen(null)}
         onCancelled={() => {
           setOpen(null);
@@ -207,18 +209,35 @@ export default function EventRegistrations() {
   );
 }
 
-function RegistrationDialog({ r, canCancel, onClose, onCancelled }: { r: AdminRegistration | null; canCancel: boolean; onClose: () => void; onCancelled: () => void }) {
+function RegistrationDialog({ r, canCancel, canCollect, onClose, onCancelled }: { r: AdminRegistration | null; canCancel: boolean; canCollect: boolean; onClose: () => void; onCancelled: () => void }) {
   const [cancelling, setCancelling] = useState(false);
+  const [collecting, setCollecting] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     setCancelling(false);
+    setCollecting(false);
     setReason('');
     setErr(null);
   }, [r]);
   if (!r) return null;
   const active = r.status === 'CONFIRMED' || r.status === 'PAYMENT_PENDING';
+
+  /** Cash/UPI taken at the desk: the exact amount due, recorded once. */
+  async function collect() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await adminPayApi.collect(r!.code, r!.payment.amountPaise);
+      toast.success(`${rupees(r!.payment.amountPaise)} received for ${r!.code}`);
+      onCancelled();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not record the payment');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function cancel() {
     setBusy(true);
@@ -248,7 +267,16 @@ function RegistrationDialog({ r, canCancel, onClose, onCancelled }: { r: AdminRe
       }
       description={`${r.teamName ? `Team ${r.teamName} · ` : ''}${paymentText(r)} · registered ${fmtDateTime(r.createdAt)}`}
       footer={
-        cancelling ? (
+        collecting ? (
+          <>
+            <Button variant="secondary" size="sm" block={false} onClick={() => setCollecting(false)} disabled={busy}>
+              Back
+            </Button>
+            <Button size="sm" block={false} onClick={collect} loading={busy}>
+              Yes, {rupees(r.payment.amountPaise)} received
+            </Button>
+          </>
+        ) : cancelling ? (
           <>
             <Button variant="secondary" size="sm" block={false} onClick={() => setCancelling(false)} disabled={busy}>
               Back
@@ -259,6 +287,11 @@ function RegistrationDialog({ r, canCancel, onClose, onCancelled }: { r: AdminRe
           </>
         ) : (
           <>
+            {canCollect && r.status === 'CONFIRMED' && r.payment.status === 'DUE' && (
+              <Button variant="secondary" size="sm" block={false} onClick={() => setCollecting(true)}>
+                Collect {rupees(r.payment.amountPaise)}
+              </Button>
+            )}
             {canCancel && active && r.payment.status !== 'PAID' && (
               <Button variant="secondary" size="sm" block={false} className="text-red-600 dark:text-red-400" onClick={() => setCancelling(true)}>
                 Cancel registration…
@@ -271,7 +304,14 @@ function RegistrationDialog({ r, canCancel, onClose, onCancelled }: { r: AdminRe
         )
       }
     >
-      {cancelling ? (
+      {collecting ? (
+        <div className="space-y-3">
+          {err && <Alert>{err}</Alert>}
+          <p className="text-sm text-fg-2">
+            Did you receive <span className="font-bold text-fg">{rupees(r.payment.amountPaise)}</span> (cash or UPI) for <span className="font-mono">{r.code}</span>? It is recorded under your name.
+          </p>
+        </div>
+      ) : cancelling ? (
         <div className="space-y-3">
           {err && <Alert>{err}</Alert>}
           <p className="text-sm text-muted">The seat is released and everyone in the team gets an email with your reason.</p>

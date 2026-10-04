@@ -85,6 +85,12 @@ const schema = z
     EMAIL_FROM_NAME: z.string().default('NEC Events'),
     EMAIL_REPLY_TO: z.string().optional(),
 
+    // Payments. With no Razorpay keys, local dev/tests use a simulated gateway ("mock"); never in production.
+    PAYMENTS_PROVIDER: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['razorpay', 'mock']).optional()),
+    RAZORPAY_KEY_ID: z.string().optional(),
+    RAZORPAY_KEY_SECRET: z.string().optional(),
+    RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
     SEED_ORG_NAME: z.string().default('National Engineering College'),
     SEED_ORG_SLUG: z.string().default('nec'),
     SEED_TIMEZONE: z.string().default('Asia/Kolkata'),
@@ -97,6 +103,10 @@ const schema = z
       ctx.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'required when EMAIL_PROVIDER=resend' });
     if (e.EMAIL_PROVIDER === 'smtp' && !(e.SMTP_HOST && e.SMTP_USER && e.SMTP_PASS))
       ctx.addIssue({ code: 'custom', path: ['SMTP_HOST'], message: 'SMTP_HOST/USER/PASS required when EMAIL_PROVIDER=smtp' });
+    if (e.PAYMENTS_PROVIDER === 'razorpay' && !(e.RAZORPAY_KEY_ID && e.RAZORPAY_KEY_SECRET && e.RAZORPAY_WEBHOOK_SECRET))
+      ctx.addIssue({ code: 'custom', path: ['RAZORPAY_KEY_ID'], message: 'RAZORPAY_KEY_ID/KEY_SECRET/WEBHOOK_SECRET required when PAYMENTS_PROVIDER=razorpay' });
+    if (e.PAYMENTS_PROVIDER === 'mock' && e.NODE_ENV === 'production')
+      ctx.addIssue({ code: 'custom', path: ['PAYMENTS_PROVIDER'], message: 'the simulated gateway is not allowed in production' });
   });
 
 const parsed = schema.safeParse(process.env);
