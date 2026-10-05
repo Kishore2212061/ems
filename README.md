@@ -74,11 +74,11 @@ cd backend && npm run build && npm run seed:live
 ### Tests
 
 ```bash
-cd backend && npm test      # 225 e2e/unit tests; uses a local mongod if installed, else downloads one
+cd backend && npm test      # 229 e2e/unit tests; uses a local mongod if installed, else downloads one
 ```
 
 ```bash
-cd frontend && npm test && npm run build && npm run check:bundle   # 78 tests + gzip budget gate
+cd frontend && npm test && npm run build && npm run check:bundle   # 80 tests + gzip budget gate
 ```
 
 CI (`.github/workflows/ci.yml`) runs typecheck → test → build (+ bundle budget) for both apps on every push.

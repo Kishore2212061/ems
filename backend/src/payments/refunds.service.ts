@@ -129,6 +129,7 @@ export class RefundsService {
       ],
       { session: o.session },
     );
+    if (o.batchId) await this.batches.updateOne({ _id: o.batchId }, { $inc: { total: 1 } }, { session: o.session });
     if (status === 'QUEUED') await this.jobs.enqueue(PROCESS_JOB, { refundId: String(r._id) }, { session: o.session, idempotencyKey: `refund-job:${r._id}` });
     if (paymentId === order.gateway_payment_id || order.mode === 'OFFLINE') await this.orders.updateOne({ _id: order._id }, { $set: { refund_status: 'PENDING' } }, { session: o.session });
     return r;
@@ -326,19 +327,20 @@ export class RefundsService {
       batch = (await this.batches.create({ local_event_id: eventId, global_event_id: ev.global_event_id, department_id: ev.department_id, event_name: ev.name, reason, started_by: by })).toObject();
     } catch (e: any) {
       if (e?.code !== 11000) throw e;
+      // This job ran before, or the event was cancelled, restored and cancelled again: same batch.
       batch = (await this.batches.findOne({ local_event_id: eventId }).lean())!;
     }
     const paid = await this.orders.find({ local_event_id: eventId, status: 'PAID', refund_status: { $in: ['NONE', 'FAILED'] } }).lean();
-    let added = 0;
     for (const o of paid) {
+      // `total` grows inside each refund's transaction, so a refund can never finish before it's counted.
       const r = await this.tx((session) => this.open(o, 'EVENT_CANCELLED', { reason: `Event cancelled: ${reason}`, batchId: batch._id, session }));
-      if (r) {
-        added++;
-        if (r.status === 'MANUAL_PENDING') await this.notify(r.toObject(), 'manual');
-      }
+      if (r?.status === 'MANUAL_PENDING') await this.notify(r.toObject(), 'manual');
     }
-    await this.batches.updateOne({ _id: batch._id }, { $inc: { total: added } });
-    if (added === 0) await this.batches.updateOne({ _id: batch._id, total: 0 }, { $set: { status: 'COMPLETED' } });
+    // Early refunds may have marked the batch complete while others were still being added (or a reused
+    // batch was complete already): settle the status from the counters. A paused batch stays paused.
+    const done = { $gte: [{ $add: ['$succeeded', '$manual'] }, '$total'] };
+    await this.batches.updateOne({ _id: batch._id, status: 'COMPLETED', $expr: { $not: [done] } }, { $set: { status: 'RUNNING' } });
+    await this.batches.updateOne({ _id: batch._id, status: 'RUNNING', $expr: done }, { $set: { status: 'COMPLETED' } });
     // The paid registrations were deactivated by the cancel itself; mark them cancelled for the participants' lists.
     await this.regs.updateMany({ local_event_id: eventId, status: 'CONFIRMED', active: false }, { $set: { status: 'CANCELLED', cancel_reason: `Event cancelled: ${reason}`, cancelled_at: new Date() } });
   }

@@ -374,7 +374,8 @@ export class LocalEventsService {
     await this.regs.updateMany({ local_event_id: id, active: true }, { $set: { active: false } });
     await this.tickets.updateMany({ local_event_id: id, status: { $in: ['ACTIVE', 'PAYMENT_PENDING'] } }, { $set: { status: 'VOID', void_reason: `Event cancelled: ${reason}` } });
     // Paid entries get their money back: a refund batch built by a job (the request returns now).
-    await this.jobs.enqueue('refunds.event_cancelled', { eventId: String(id), reason, by: ctx.user.id }, { idempotencyKey: `event-cancelled:${id}` });
+    // Keyed by version: one job per cancellation, even if the event was restored and cancelled again.
+    await this.jobs.enqueue('refunds.event_cancelled', { eventId: String(id), reason, by: ctx.user.id }, { idempotencyKey: `event-cancelled:${id}:v${out.version ?? 0}` });
     return out;
   }
 

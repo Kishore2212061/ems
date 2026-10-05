@@ -8,3 +8,6 @@ dist/
 .claude/
 # Original doc contains live secrets — the redacted copy lives in docs/
 /ems_full_system_documentation.md
+
+# Local data backups (may contain personal data)
+/backups/

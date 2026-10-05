@@ -250,6 +250,23 @@ describe('cancelled events', () => {
     expect((await as(finance).get(`/admin/refund-batches?festId=${f.id}`)).body.items[0]).toMatchObject({ status: 'PAUSED', failed: 1, succeeded: 0 });
   });
 
+  it('an event restored after a cancel and cancelled again refunds its new paid entries too', async () => {
+    const f = await newFest();
+    const e = await liveEvent(f.id);
+    const [a, b] = await Promise.all([makeUser(t, []), makeUser(t, [])]);
+    await paid(a, e.id);
+    await as(root).post(`/admin/local-events/${e.id}/cancel`, { reason: 'Clash with exams' });
+    await drain();
+    // Restored by hand (there's no "un-cancel" in the app): live again, seats free.
+    await t.conn.collection('local_events').updateOne({ _id: new Types.ObjectId(e.id) }, { $set: { status: 'PUBLISHED', status_reason: null, seats_confirmed: 0 }, $inc: { version: 1 } });
+    const second = await paid(b, e.id);
+    expect((await as(root).post(`/admin/local-events/${e.id}/cancel`, { reason: 'Clash again' })).body.status).toBe('CANCELLED');
+    await drain();
+    expect(gw.refunds.filter((x) => x.paymentId === second.paymentId)).toHaveLength(1);
+    expect((await as(b).get('/refunds/my')).body.items[0]).toMatchObject({ status: 'SUCCEEDED', source: 'EVENT_CANCELLED' });
+    expect((await as(finance).get(`/admin/refund-batches?festId=${f.id}`)).body.items[0]).toMatchObject({ total: 2, succeeded: 2, status: 'COMPLETED' });
+  });
+
   it('payments taken by the simulator (before the Razorpay keys were set) refund locally, without calling Razorpay', async () => {
     const f = await newFest();
     const e = await liveEvent(f.id);
