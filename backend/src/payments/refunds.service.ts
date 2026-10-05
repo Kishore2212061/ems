@@ -17,7 +17,7 @@ import { RegistrationsService } from '../registrations/registrations.service';
 import { TICKET_MODEL, Ticket } from '../tickets/ticket.schema';
 import { USER_MODEL, User } from '../users/user.schema';
 import { StatsService } from '../stats/stats.service';
-import { GatewayError, PAYMENT_GATEWAY, type PaymentGateway } from './gateway';
+import { GatewayError, isSimulatedPayment, PAYMENT_GATEWAY, type PaymentGateway } from './gateway';
 import { ORDER_MODEL, Order } from './order.schema';
 import { REFUND_BATCH_MODEL, REFUND_MODEL, Refund, RefundBatch, RefundSource, RefundStatus } from './refund.schema';
 
@@ -144,6 +144,8 @@ export class RefundsService {
   async process(id: Id) {
     const r = await this.refunds.findOneAndUpdate({ _id: id, status: { $in: ['QUEUED', 'FAILED'] } }, { $set: { status: 'PROCESSING', failure: null } }, { new: true }).lean();
     if (!r) return; // already done / not ours to run
+    // Paid through the simulator (e.g. before the Razorpay keys were set): nothing real to send back.
+    if (isSimulatedPayment(r.payment_id) && this.gateway?.name !== 'mock') return this.succeeded(r, `rfnd_sim_${String(r._id)}`);
     if (!this.gateway) throw new Error('payments are not configured');
     await this.slot();
     try {
@@ -348,14 +350,34 @@ export class RefundsService {
     };
   }
 
+  /** FAILED → QUEUED plus a fresh job. Atomic, so double clicks queue it once. */
+  private async requeue(id: Id) {
+    const r = await this.refunds.findOneAndUpdate({ _id: id, status: 'FAILED', mode: 'ONLINE' }, { $set: { status: 'QUEUED', failure: null } }, { new: true }).lean();
+    if (!r) return null;
+    if (r.batch_id) await this.batches.updateOne({ _id: r.batch_id }, { $inc: { failed: -1 } });
+    await this.orders.updateOne({ _id: r.order_id, refund_status: 'FAILED' }, { $set: { refund_status: 'PENDING' } });
+    await this.jobs.enqueue(PROCESS_JOB, { refundId: String(r._id) }, { idempotencyKey: `refund-job:${r._id}:${Date.now()}` });
+    return r;
+  }
+
+  /** Try one failed refund again (after fixing whatever made the gateway refuse it). */
+  async retry(user: AuthUser, id: Id, ip: string) {
+    await this.loadScoped(user, id);
+    const r = await this.requeue(id);
+    if (!r) throw Errors.conflict('NOT_FAILED', 'Only failed online refunds can be tried again');
+    await this.audit.record({ actorId: user.id, action: 'refund.retried', entity: 'refund', entityId: id, ip });
+    return toRefundView(r);
+  }
+
   /** Re-queue a batch's failed refunds (e.g. after topping up the gateway balance). */
   async resume(user: AuthUser, batchId: Id, ip: string) {
     const b = await this.batches.findOne(this.rbac.withScope({ _id: batchId }, this.rbac.scopeFilter(user, 'refund.approve', SCOPE))).lean();
     if (!b) throw Errors.notFound('Batch');
     const failed = await this.refunds.find({ batch_id: batchId, status: 'FAILED' }).select('_id').lean();
-    await this.batches.updateOne({ _id: batchId }, { $set: { status: 'RUNNING', paused_reason: null }, $inc: { failed: -failed.length } });
-    for (const r of failed) await this.jobs.enqueue(PROCESS_JOB, { refundId: String(r._id) }, { idempotencyKey: `refund-job:${r._id}:${Date.now()}` });
-    await this.audit.record({ actorId: user.id, action: 'refund.batch_resumed', entity: 'refund_batch', entityId: batchId, meta: { requeued: failed.length }, ip });
-    return { requeued: failed.length };
+    await this.batches.updateOne({ _id: batchId }, { $set: { status: 'RUNNING', paused_reason: null } });
+    let requeued = 0;
+    for (const r of failed) if (await this.requeue(r._id)) requeued++;
+    await this.audit.record({ actorId: user.id, action: 'refund.batch_resumed', entity: 'refund_batch', entityId: batchId, meta: { requeued }, ip });
+    return { requeued };
   }
 }

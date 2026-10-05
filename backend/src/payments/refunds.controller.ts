@@ -61,6 +61,13 @@ export class RefundsController {
   }
 
   @RequirePermission('refund.approve')
+  @Post('admin/refunds/:id/retry')
+  @HttpCode(200)
+  retry(@Param('id', ObjectIdPipe) id: Types.ObjectId, @CurrentUser() u: AuthUser, @Req() req: FastifyRequest) {
+    return this.refunds.retry(u, id, req.ip);
+  }
+
+  @RequirePermission('refund.approve')
   @Get('admin/refund-batches')
   batches(@Query(new ZodPipe(z.object({ festId: objectId }))) q: { festId: Types.ObjectId }, @CurrentUser() u: AuthUser) {
     return this.refunds.listBatches(u, q.festId);

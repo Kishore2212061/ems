@@ -469,6 +469,7 @@ export const adminRefundApi = {
   markPaid: (id: string, note?: string) => api.post<RefundView>(`/admin/refunds/${id}/mark-paid`, note ? { note } : {}),
   batches: (festId: string) => api.get<{ items: RefundBatchView[] }>(`/admin/refund-batches${qs({ festId })}`),
   resume: (id: string) => api.post<{ requeued: number }>(`/admin/refund-batches/${id}/resume`),
+  retry: (id: string) => api.post<RefundView>(`/admin/refunds/${id}/retry`),
 };
 
 // ── reports (Module 9) ──

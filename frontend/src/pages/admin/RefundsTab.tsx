@@ -75,9 +75,11 @@ function Batches({ festId, version, onChanged }: { festId: string; version: numb
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${b.eventName} refunds`}>
                 <div className={b.status === 'PAUSED' ? 'h-full bg-amber-500' : 'h-full bg-emerald-500'} style={{ width: `${pct}%` }} />
               </div>
-              {b.status === 'PAUSED' && (
+              {(b.status === 'PAUSED' || b.failed > 0) && (
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="text-amber-700 dark:text-amber-300">Paused: {b.pausedReason}</span>
+                  <span className={b.status === 'PAUSED' ? 'text-amber-700 dark:text-amber-300' : 'text-red-600 dark:text-red-400'}>
+                    {b.status === 'PAUSED' ? `Paused: ${b.pausedReason}` : 'Some refunds failed'}
+                  </span>
                   <Button
                     size="sm"
                     block={false}
@@ -88,7 +90,7 @@ function Batches({ festId, version, onChanged }: { festId: string; version: numb
                       onChanged();
                     }}
                   >
-                    Resume
+                    {b.status === 'PAUSED' ? 'Resume' : 'Retry failed'}
                   </Button>
                 </div>
               )}
@@ -207,6 +209,10 @@ function RefundDialog({ r, onClose, onDone }: { r: RefundView | null; onClose: (
         ) : r.status === 'MANUAL_PENDING' ? (
           <Button size="sm" block={false} loading={busy} onClick={() => act(() => adminRefundApi.markPaid(r.id, note.trim() || undefined), 'Marked as handed back')}>
             Cash handed back
+          </Button>
+        ) : r.status === 'FAILED' && r.mode === 'ONLINE' ? (
+          <Button size="sm" block={false} loading={busy} onClick={() => act(() => adminRefundApi.retry(r.id), 'Refund queued again')}>
+            Try again
           </Button>
         ) : (
           <Button size="sm" block={false} onClick={onClose}>

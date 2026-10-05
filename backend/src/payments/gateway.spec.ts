@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { RazorpayGateway } from './gateway';
+import { isSimulatedPayment, MockGateway, RazorpayGateway } from './gateway';
 
 const sign = (secret: string, data: string) => createHmac('sha256', secret).update(data).digest('hex');
 
@@ -17,5 +17,16 @@ describe('RazorpayGateway signatures', () => {
     expect(new RazorpayGateway('k', 's', 'hook-secret').verifyWebhook(body, sign('hook-secret', body))).toBe(true);
     const noHook = new RazorpayGateway('k', 's', '');
     expect(noHook.verifyWebhook(body, sign('', body))).toBe(false); // an empty key would be forgeable
+  });
+});
+
+describe('MockGateway refunds', () => {
+  it('refunds only payments it took itself (never "refunds" a real Razorpay payment)', async () => {
+    const g = new MockGateway();
+    const { paymentId } = g.pay('order_sim_x');
+    expect(isSimulatedPayment(paymentId)).toBe(true);
+    expect(isSimulatedPayment('pay_N3xKq8ZtR2bV1c')).toBe(false);
+    await expect(g.refund('pay_N3xKq8ZtR2bV1c', 100)).rejects.toMatchObject({ status: 400 });
+    await expect(g.refund(paymentId, 100)).resolves.toMatchObject({ id: expect.stringMatching(/^rfnd_sim_/) });
   });
 });

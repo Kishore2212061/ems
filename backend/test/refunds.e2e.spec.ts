@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { JobsService } from '../src/jobs/jobs.service';
-import { MockGateway, PAYMENT_GATEWAY } from '../src/payments/gateway';
+import { GatewayError, MockGateway, PAYMENT_GATEWAY } from '../src/payments/gateway';
 import { RefundsService } from '../src/payments/refunds.service';
 import { createTestApp, type TestApp } from './helpers/app';
 import { client } from './helpers/client';
@@ -102,6 +102,26 @@ describe('refund requests', () => {
     expect(gw.refunds.filter((x) => x.paymentId === paymentId)).toHaveLength(1);
   });
 
+  it('a refund the gateway refused can be tried again on its own, once however many clicks', async () => {
+    const f = await newFest();
+    const e = await liveEvent(f.id);
+    const p = await makeUser(t, []);
+    const { reg, paymentId } = await paid(p, e.id);
+    const r = (await as(p).post(`/registrations/${reg.code}/refund-request`, { reason: 'Clash with my exam' })).body;
+    gw.failNextRefund = 'The payment is not captured yet';
+    await as(finance).post(`/admin/refunds/${r.id}/approve`);
+    await drain();
+    expect((await as(finance).get(`/admin/refunds?festId=${f.id}&status=FAILED`)).body.items[0]).toMatchObject({ id: r.id, failure: 'The payment is not captured yet' });
+
+    expect((await as(p).post(`/admin/refunds/${r.id}/retry`)).status).toBe(403);
+    const tries = await Promise.all([1, 2].map(() => as(finance).post(`/admin/refunds/${r.id}/retry`)));
+    expect(tries.map((x) => x.status).sort()).toEqual([200, 409]);
+    expect(tries.find((x) => x.status === 409)!.body.code).toBe('NOT_FAILED');
+    await drain();
+    expect((await as(p).get('/refunds/my')).body.items[0]).toMatchObject({ status: 'SUCCEEDED', failure: null });
+    expect(gw.refunds.filter((x) => x.paymentId === paymentId)).toHaveLength(1);
+  });
+
   it('who can ask, and when', async () => {
     const f = await newFest();
     const e = await liveEvent(f.id, { participation: 'TEAM', teamMin: 2, teamMax: 2 });
@@ -118,8 +138,9 @@ describe('refund requests', () => {
     expect((await as(p).post(`/registrations/${reg.code}/refund-request`, { reason: 'Changed plans' })).body.code).toBe('REFUND_WINDOW_CLOSED');
 
     const free = await liveEvent(f.id, { pricing: { type: 'FREE' } });
-    const rf = (await register(p, { eventId: free.id })).body;
-    expect((await as(p).post(`/registrations/${rf.code}/refund-request`, { reason: 'Changed plans' })).body.code).toBe('NOT_REFUNDABLE');
+    const solo = await makeUser(t, []); // own person: p's schedule may clash with the free event's slot
+    const rf = (await register(solo, { eventId: free.id })).body;
+    expect((await as(solo).post(`/registrations/${rf.code}/refund-request`, { reason: 'Changed plans' })).body.code).toBe('NOT_REFUNDABLE');
   });
 
   it('a rejected request keeps the registration and can be asked again', async () => {
@@ -227,6 +248,32 @@ describe('cancelled events', () => {
     expect(hook.statusCode).toBe(200);
     expect((await as(p).get('/refunds/my')).body.items[0]).toMatchObject({ status: 'FAILED', failure: 'Bank account closed' });
     expect((await as(finance).get(`/admin/refund-batches?festId=${f.id}`)).body.items[0]).toMatchObject({ status: 'PAUSED', failed: 1, succeeded: 0 });
+  });
+
+  it('payments taken by the simulator (before the Razorpay keys were set) refund locally, without calling Razorpay', async () => {
+    const f = await newFest();
+    const e = await liveEvent(f.id);
+    const p = await makeUser(t, []);
+    const { paymentId } = await paid(p, e.id);
+    const svc = t.app.get(RefundsService) as unknown as { gateway: unknown };
+    const calls: string[] = [];
+    svc.gateway = {
+      name: 'razorpay',
+      refund: async (id: string) => {
+        calls.push(id);
+        throw new GatewayError(`${id.slice(4)} is not a valid id`, 400);
+      },
+    };
+    try {
+      await as(root).post(`/admin/local-events/${e.id}/cancel`, { reason: 'Judges unavailable' });
+      await drain();
+    } finally {
+      svc.gateway = gw;
+    }
+    expect(calls).toEqual([]);
+    expect(gw.refunds.some((x) => x.paymentId === paymentId)).toBe(false);
+    expect((await as(p).get('/refunds/my')).body.items[0]).toMatchObject({ status: 'SUCCEEDED', source: 'EVENT_CANCELLED' });
+    expect((await as(finance).get(`/admin/refund-batches?festId=${f.id}`)).body.items[0]).toMatchObject({ status: 'COMPLETED', succeeded: 1, failed: 0 });
   });
 
   it('refund lookups use indexes', async () => {

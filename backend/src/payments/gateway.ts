@@ -34,6 +34,12 @@ export interface PaymentGateway {
 
 export const PAYMENT_GATEWAY = Symbol('PAYMENT_GATEWAY');
 
+/**
+ * Payments taken by the simulator (ids "pay_sim_…"; real Razorpay ids never contain a second "_").
+ * No real money moved, so their refunds settle locally whatever gateway is configured now.
+ */
+export const isSimulatedPayment = (paymentId: string | null | undefined) => !!paymentId?.startsWith('pay_sim_');
+
 const hmac = (secret: string, data: Buffer | string) => createHmac('sha256', secret).update(data).digest('hex');
 /** Constant-time compare of two hex strings. */
 function sameHex(a: string, b: string) {
@@ -120,6 +126,8 @@ export class MockGateway implements PaymentGateway {
       this.failNextRefund = null;
       throw new GatewayError(msg, 400);
     }
+    // Never "refund" a real Razorpay payment from the simulator: the money would stay put.
+    if (!isSimulatedPayment(paymentId)) throw new GatewayError('This payment was made through Razorpay; set the Razorpay keys to refund it', 400);
     if (this.refunds.some((r) => r.paymentId === paymentId)) throw new GatewayError('The payment has been fully refunded already', 400);
     this.refunds.push({ paymentId, amountPaise });
     return { id: `rfnd_sim_${randomBytes(7).toString('hex')}` };
